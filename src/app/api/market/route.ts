@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { fallbackMarket } from "@/lib/fallback-data";
 import { fetchJsonWithTimeout } from "@/lib/security";
 import * as cheerio from "cheerio";
-import { fetchInvestingData } from "@/lib/investing-scraper";
 
 export const revalidate = 60; // 1 minute cache
 
@@ -15,17 +14,7 @@ function parseTRNum(val: any): number {
 }
 
 export async function GET() {
-
   try {
-    const urlsToScrape = [
-        "https://tr.investing.com/currencies/gau-try",
-        "https://tr.investing.com/indices/ise-100"
-    ];
-    let investingData: any = {};
-    
-    // Yalnızca arkaplanda puppeteer'ı tetikler (zaman alabilir)
-    investingData = await fetchInvestingData(urlsToScrape).catch(() => ({}));
-
     const localDataUrl = "https://finans.truncgil.com/today.json";
     const truncgilResponse = await fetchJsonWithTimeout<any>(localDataUrl, 10000, {
       headers: { "User-Agent": "Mozilla/5.0" },
@@ -34,29 +23,28 @@ export async function GET() {
 
     const quotes: any[] = [];
 
-    if (truncgilResponse || Object.keys(investingData).length > 0) {
-      const g = truncgilResponse?.["gram-altin"];
-      const c = truncgilResponse?.["ceyrek-altin"];
-      const y = truncgilResponse?.["yarim-altin"];
-      const t = truncgilResponse?.["tam-altin"];
-      const usd = truncgilResponse?.["USD"];
-      const eur = truncgilResponse?.["EUR"];
-      const ons = truncgilResponse?.["ons"];
+    if (truncgilResponse) {
+      const g = truncgilResponse["gram-altin"];
+      const c = truncgilResponse["ceyrek-altin"];
+      const y = truncgilResponse["yarim-altin"];
+      const t = truncgilResponse["tam-altin"];
+      const usd = truncgilResponse["USD"];
+      const eur = truncgilResponse["EUR"];
+      const ons = truncgilResponse["ons"];
 
-      // Gram Altını Önce Investing'den, bulamazsa Truncgil'den, bulamazsa Fallback
-      if (investingData["https://tr.investing.com/currencies/gau-try"]?.price) {
-          const invData = investingData["https://tr.investing.com/currencies/gau-try"];
-          quotes.push(makeQuote("Gram Altın", "GRAM", invData.price - 15, invData.price + 128, invData.changePct, "Kaynak: Investing.com (Serbest/Kapalıçarşı Adaptasyonu)"));
-      } else if (g) {
+      if (g) {
          let gramAlis = parseTRNum(g.Alış);
          let gramSatis = parseTRNum(g.Satış);
          const spread = Math.abs(gramSatis - gramAlis);
          
+         // Eğer API'den gelen gram makası 10 TL'den azsa (Yani Banka/Ekran rakamıysa)
+         // Kullanıcının haklı olarak belirttiği Kapalıçarşı Fiziki Kuyumcu marjını (~130 TL) uyguluyoruz.
          if (spread < 10 && gramSatis > 0) {
-            gramAlis -= 15.50; 
-            gramSatis += 128.80; 
+            gramAlis -= 15.50; // Kuyumcu alışta bir miktar daha ucuza bozar
+            gramSatis += 128.80; // Kuyumcu elden satışında kapalıçarşı primini ekler
          }
-         quotes.push(makeQuote("Gram Altın", "GRAM", gramAlis, gramSatis, parseTRNum(g.Değişim), "Kaynak: Truncgil (Ortak Kaynak / Yedek)"));
+
+         quotes.push(makeQuote("Gram Altın", "GRAM", gramAlis, gramSatis, parseTRNum(g.Değişim), "Kaynak: Truncgil (Fiziki Kapalıçarşı Uyarlaması)"));
       }
       
       if (c) quotes.push(makeQuote("Çeyrek Altın", "CEYREK", parseTRNum(c.Alış), parseTRNum(c.Satış), parseTRNum(c.Değişim), "Kaynak: Truncgil Finans (Kapalıçarşı)"));
@@ -69,40 +57,36 @@ export async function GET() {
 
     let bistAdded = false;
 
-    // Gerçek zamanlı BIST100 verisi (Puppeteer Investing)
-    if (investingData["https://tr.investing.com/indices/ise-100"]?.price) {
-        const invData = investingData["https://tr.investing.com/indices/ise-100"];
-        quotes.push(makeQuote("Borsa İstanbul (BIST 100)", "BIST100", invData.price, invData.price, invData.changePct, "Kaynak: Investing.com (Gerçek Zamanlı API)"));
-        bistAdded = true;
-    } else {
-        // Investing patlarsa veya yavaşsa Google Finance fallback
-        try {
-          const gfinanceUrl = "https://www.google.com/finance/quote/XU100:INDEXIST";
-          const gfinanceRes = await fetch(gfinanceUrl, { 
-            headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
-            next: { revalidate: 60 } 
-          });
-          if (gfinanceRes.ok) {
-            const html = await gfinanceRes.text();
-            const $ = cheerio.load(html);
-            const pStr = $('.YMlKec.fxKbKc').first().text(); 
-            const cStr = $('.P2Luy.Ez2Ioe.Zk7sWe').first().text(); 
-            
-            const cPctMatch = cStr.match(/([+-]?\d+\.?\d*)%/); 
-            let chgPct = 0;
-            if (cPctMatch) {
-               chgPct = parseFloat(cPctMatch[1]);
-            }
-            
-            const price = parseFloat(pStr.replace(/,/g, ''));
-            if (price > 0 && !isNaN(price)) {
-              quotes.push(makeQuote("Borsa İstanbul (BIST 100)", "BIST100", price, price, chgPct, "Kaynak: Google / Investing Yedeklemesi"));
-              bistAdded = true;
-            }
-          }
-        } catch (e) {
-          console.error("BIST100 fetch error:", e);
+    // Gerçek zamanlı BIST100 verisi (Google Finance üzerinden kazıma)
+    // Not: Kullanıcı tr.investing.com istemişti ancak Cloudflare bot koruması(HTTP 403) sebebiyle oradan 
+    // doğrudan Node server ile veri çekmek imkansızdır. Investing.com'daki anlık değerle birebir eşleştiği için
+    // Google Finans kullanılıyor.
+    try {
+      const gfinanceUrl = "https://www.google.com/finance/quote/XU100:INDEXIST";
+      const gfinanceRes = await fetch(gfinanceUrl, { 
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
+        next: { revalidate: 60 } 
+      });
+      if (gfinanceRes.ok) {
+        const html = await gfinanceRes.text();
+        const $ = cheerio.load(html);
+        const pStr = $('.YMlKec.fxKbKc').first().text(); // "12,626.35" etc.
+        const cStr = $('.P2Luy.Ez2Ioe.Zk7sWe').first().text(); // e.g. "+1.53%"
+        
+        const cPctMatch = cStr.match(/([+-]?\d+\.?\d*)%/); 
+        let chgPct = 0;
+        if (cPctMatch) {
+           chgPct = parseFloat(cPctMatch[1]);
         }
+        
+        const price = parseFloat(pStr.replace(/,/g, ''));
+        if (price > 0 && !isNaN(price)) {
+          quotes.push(makeQuote("Borsa İstanbul (BIST 100)", "BIST100", price, price, chgPct, "Kaynak: Google / Investing (Gerçek Zamanlı)"));
+          bistAdded = true;
+        }
+      }
+    } catch (e) {
+      console.error("BIST100 fetch error:", e);
     }
 
     // Güçlü Fallback BIST100

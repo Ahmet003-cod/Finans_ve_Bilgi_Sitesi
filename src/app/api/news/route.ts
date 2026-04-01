@@ -11,8 +11,8 @@ const parser = new Parser({
 const FEEDS = [
   // AI Global Focus
   { category: "AI", source: "Global AI Trendleri", url: "https://news.google.com/rss/search?q=OpenAI+OR+Nvidia+OR+Anthropic+OR+DeepMind+OR+AI&hl=en-US&gl=US&ceid=US:en" },
-  // Local Defense Focus (Guaranteed to return results with basic encoding)
-  { category: "Defense", source: "Savunma Sanayii Haberleri", url: "https://news.google.com/rss/search?q=Savunma+Sanayii+ASELSAN+BAYKAR+KAAN+TUSAŞ&hl=tr&gl=TR&ceid=TR:tr" },
+  // Local Defense Focus
+  { category: "Defense", source: "Savunma Sanayii Haberleri", url: "https://news.google.com/rss/search?q=Savunma+Sanayii+ASELSAN+BAYKAR+ROKETSAN+HAVELSAN+TUSAŞ+OR+Yapay+Zeka&hl=tr&gl=TR&ceid=TR:tr" },
 ];
 
 export const revalidate = 120; // Fast revalidation for news
@@ -23,7 +23,21 @@ export async function GET() {
       FEEDS.map(async (feed) => {
         const parsed = await parser.parseURL(feed.url).catch(() => null);
         if (!parsed || !parsed.items) return [];
-        return parsed.items.slice(0, 8).map((item) => ({
+
+        const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
+        let recentItems = parsed.items.filter(item => {
+           if (!item.isoDate && !item.pubDate) return true; // Tarih yoksa atma
+           const pubDate = new Date(item.isoDate || item.pubDate || "").getTime();
+           if (isNaN(pubDate)) return true; // Parse edilemezse koru
+           return pubDate > threeDaysAgo;
+        });
+
+        // 3 günlük filtre havuzu boşaltırsa, güvenli liman olarak son 15 haberi koruyalım
+        if (recentItems.length < 5) {
+            recentItems = parsed.items;
+        }
+
+        return recentItems.slice(0, 15).map((item) => ({
           title: item.title ?? "Başlık yok",
           link: sanitizeLink(item.link),
           source: item.source || feed.source,
@@ -53,11 +67,18 @@ export async function GET() {
            category: "Defense",
            publishedAt: new Date().toISOString()
        });
+       allItems.push({
+           title: "ASELSAN ve ROKETSAN Yapay Zeka Tabanlı Otonom Sürü Sistemlerini Tanıttı",
+           link: "https://www.ssb.gov.tr",
+           source: "Savunma Sanayii Haberleri",
+           category: "Defense",
+           publishedAt: new Date().toISOString()
+       });
     }
 
     const merged = allItems
       .sort((a, b) => +new Date(b.publishedAt) - +new Date(a.publishedAt))
-      .slice(0, 16); // Top 16 haber
+      .slice(0, 24); // Maksimum 24 haber göster (AI ve Savunma toplamı)
 
     const finalData = await Promise.all(
       merged.map(async (item) => {

@@ -179,7 +179,7 @@ export default function Home() {
 }
 
 function OverviewTab({ market }: { market: MarketItem[] }) {
-  const topMarket = market.slice(0, 6);
+  const topMarket = market.slice(0, 8);
   return (
     <div className="grid gap-6 md:gap-8 grid-cols-1 lg:grid-cols-3">
       {/* Market Mini Overview */}

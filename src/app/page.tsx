@@ -707,94 +707,65 @@ function GeniusesTab({ figures, articles }: { figures: HistoricFigure[], article
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-         {figures.map((fig, i) => {
-            // Bu deha ile ilgili olabilecek 2 makale bul
-            const relatedArticles = articles
-              .filter(a => 
-                a.category === (fig.type === 'economist' ? 'Finans' : 'Yapay Zeka') ||
-                a.category === 'DergiPark' ||
-                a.titleTr.toLowerCase().includes(fig.name.split(' ')[0].toLowerCase())
-              )
-              .slice(0, 2);
-
-            return (
-              <motion.div 
-                 key={fig.id}
-                 initial={{ opacity: 0, scale: 0.95 }} 
-                 animate={{ opacity: 1, scale: 1 }} 
-                 transition={{ delay: i * 0.1 }}
-                 className="flex flex-col gap-4"
-              >
-                <a 
-                   href={fig.wikiUrl}
-                   target="_blank"
-                   rel="noreferrer"
-                   className="glass-panel p-0 rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-xl ring-1 ring-amber-500/20 hover:ring-2 hover:ring-amber-500/50 group transition-all min-h-[320px] md:min-h-0"
-                >
-                   {/* Görsel Alanı */}
-                   <div className="relative w-full md:w-2/5 h-64 md:h-auto overflow-hidden flex-shrink-0">
-                      <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style={{ backgroundImage: `url(${fig.imageUrl})` }}></div>
-                      <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-[#0f172a] via-[#0f172a]/70 to-transparent"></div>
-                      
-                      {/* Badge */}
-                      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-                         <span className={cn(
-                            "text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md shadow-lg",
-                            fig.type === 'economist' ? "text-cyan-200 bg-cyan-950/80 border border-cyan-800/50" : "text-amber-200 bg-amber-950/80 border border-amber-800/50"
-                         )}>
-                            {fig.type === 'economist' ? 'Ekonomist' : 'Bilim İnsanı'}
-                         </span>
-                         <span className={cn(
-                            "text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md w-fit bg-black/60",
-                            fig.origin === 'local' ? "text-emerald-400" : "text-slate-300"
-                         )}>
-                            {fig.origin === 'local' ? 'Yerli & İslami' : 'Yabancı Kaynak'}
-                         </span>
-                      </div>
-                   </div>
-
-                   {/* Metin Alanı */}
-                   <div className="flex-1 p-6 flex flex-col justify-center bg-slate-900/60 backdrop-blur-sm z-10 -mt-10 md:mt-0 rounded-t-3xl md:rounded-l-none md:rounded-r-3xl">
-                      <h3 className="text-xl font-bold text-white mb-1">{fig.name}</h3>
-                      <div className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-4">{fig.title}</div>
-                      
-                      <p className="text-sm text-slate-300 leading-relaxed italic mb-5 border-l-2 border-white/20 pl-3">"{fig.bio}"</p>
-                      
-                      <div className="space-y-2 mb-4">
-                         <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Başlıca Katkıları</div>
-                         {fig.achievements.map((ach, idx) => (
-                            <div key={idx} className="flex items-start gap-2">
-                               <Target size={14} className="text-amber-400 mt-0.5 flex-shrink-0" />
-                               <span className="text-xs text-slate-200 leading-normal">{ach}</span>
-                            </div>
-                         ))}
-                      </div>
-
-                      <div className="mt-auto pt-4 border-t border-white/10 flex items-center justify-between group-hover:text-amber-400 transition-colors">
-                         <span className="text-[10px] font-black uppercase tracking-widest">Tüm Hayatını Oku (Vikipedi)</span>
-                         <ExternalLink size={14} />
-                      </div>
-                   </div>
-                </a>
-
-                {/* İlgili Akademik Makaleler */}
-                {relatedArticles.length > 0 && (
-                  <div className="px-4 py-3 bg-white/5 rounded-2xl border border-white/10 flex flex-col gap-2">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-amber-500/80 flex items-center gap-2">
-                      <BookOpen size={12}/> {fig.name} Alanıyla İlgili Akademik Okumalar
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {relatedArticles.map((art, idx) => (
-                        <a key={idx} href={art.link} target="_blank" rel="noreferrer" className="text-[11px] text-slate-400 hover:text-white bg-black/30 p-2 rounded-lg border border-white/5 transition-colors line-clamp-1 flex items-center gap-2">
-                          <ExternalLink size={10} className="flex-shrink-0" /> {art.titleTr}
-                        </a>
-                      ))}
-                    </div>
+         {figures.map((fig, i) => (
+            <motion.a 
+               href={fig.wikiUrl}
+               target="_blank"
+               rel="noreferrer"
+               key={fig.id}
+               initial={{ opacity: 0, scale: 0.95 }} 
+               animate={{ opacity: 1, scale: 1 }} 
+               transition={{ delay: i * 0.1 }}
+               className="glass-panel p-0 rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-xl ring-1 ring-amber-500/20 hover:ring-2 hover:ring-amber-500/50 group transition-all min-h-[320px] md:min-h-0"
+            >
+               {/* Görsel Alanı */}
+               <div className="relative w-full md:w-2/5 h-64 md:h-auto overflow-hidden flex-shrink-0">
+                  <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style={{ backgroundImage: `url(${fig.imageUrl})` }}></div>
+                  <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-[#0f172a] via-[#0f172a]/70 to-transparent"></div>
+                  
+                  {/* Badge */}
+                  <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+                     <span className={cn(
+                        "text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md shadow-lg",
+                        fig.type === 'economist' ? "text-cyan-200 bg-cyan-950/80 border border-cyan-800/50" : "text-amber-200 bg-amber-950/80 border border-amber-800/50"
+                     )}>
+                        {fig.type === 'economist' ? 'Ekonomist' : 'Bilim İnsanı'}
+                     </span>
+                     <span className={cn(
+                        "text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md w-fit bg-black/60",
+                        fig.origin === 'local' ? "text-emerald-400" : "text-slate-300"
+                     )}>
+                        {fig.origin === 'local' ? 'Yerli & İslami' : 'Yabancı Kaynak'}
+                     </span>
                   </div>
-                )}
-              </motion.div>
-            );
-         })}
+               </div>
+
+               {/* Metin Alanı */}
+               <div className="flex-1 p-6 flex flex-col justify-center bg-slate-900/60 backdrop-blur-sm z-10 -mt-10 md:mt-0 rounded-t-3xl md:rounded-l-none md:rounded-r-3xl">
+                  <h3 className="text-xl font-bold text-white mb-1">{fig.name}</h3>
+                  <div className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-4">{fig.title}</div>
+                  
+                  <p className="text-sm text-slate-300 leading-relaxed italic mb-5 border-l-2 border-white/20 pl-3">"{fig.bio}"</p>
+                  
+                  <div className="space-y-2 mb-4">
+                     <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Başlıca Katkıları</div>
+                     {fig.achievements.map((ach, idx) => (
+                        <div key={idx} className="flex items-start gap-2">
+                           <Target size={14} className="text-amber-400 mt-0.5 flex-shrink-0" />
+                           <span className="text-xs text-slate-200 leading-normal">{ach}</span>
+                        </div>
+                     ))}
+                  </div>
+
+                  <div className="mt-auto pt-4 border-t border-white/10 flex items-center justify-between group-hover:text-amber-400 transition-colors">
+                     <span className="text-[10px] font-black uppercase tracking-widest">Tüm Hayatını Oku (Vikipedi)</span>
+                     <ExternalLink size={14} />
+                  </div>
+               </div>
+            </motion.a>
+         ))}
+
+
       </div>
     </div>
   );

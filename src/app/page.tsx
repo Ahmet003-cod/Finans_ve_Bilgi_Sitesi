@@ -64,7 +64,6 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [views, setViews] = useState<number>(0);
 
-  // View Counter Logic - Sayfa girişi ve her sekme geçişinde (linke basıldığında) artsın
   useEffect(() => {
     const fetchViews = async () => {
       try {
@@ -77,7 +76,7 @@ export default function Home() {
       }
     };
     fetchViews();
-  }, [activeTab]); // activeTab değiştiğinde (her linke basıldığında) artar
+  }, []); // Sadece sayfa ilk açıldığında (giriş yapıldığında) artar
 
   useEffect(() => {
     const load = async () => {
@@ -218,6 +217,50 @@ export default function Home() {
             )}
           </AnimatePresence>
         </div>
+
+        {/* Hakkımda Bölümü (Footer) */}
+        <footer className="mt-auto pt-12 pb-8 border-t border-white/5">
+           <motion.div 
+             initial={{ opacity: 0, scale: 0.98 }}
+             animate={{ opacity: 1, scale: 1 }}
+             transition={{ delay: 0.5 }}
+             className="glass-panel p-8 rounded-3xl relative overflow-hidden"
+           >
+             <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-[100px] pointer-events-none" />
+             <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+               <div className="w-24 h-24 md:w-32 md:h-32 rounded-3xl bg-gradient-to-br from-cyan-600 to-indigo-600 flex items-center justify-center border border-white/20 shadow-2xl flex-shrink-0">
+                  <Bot className="text-white w-12 h-12 md:w-16 md:h-16" />
+               </div>
+               
+               <div className="flex-1 text-center md:text-left">
+                  <h3 className="text-2xl font-bold text-white mb-2">Hakkımda</h3>
+                  <p className="text-lg font-semibold text-cyan-400 mb-4">Ahmet Gün • Fırat Üniversitesi | 2. Sınıf Öğrencisi</p>
+                  <p className="text-slate-300 leading-relaxed max-w-4xl">
+                    Yapay zeka, görüntü işleme ve modern web teknolojileri üzerine uzmanlaşan bir geliştiriciyim. 
+                    Yapay zeka kullanarak yenilikçi web sitesi tasarlama, yapay zeka modellerini **fine-tuning** ederek 
+                    ihtiyaca özel yeni modeller kurma ve bu modelleri gerçek dünya verileriyle entegre etme alanları üzerine çalışıyorum. 
+                    Bu platform, akademik disiplin ile finansal teknolojileri birleştiren yapay zeka destekli bir vizyonun eseridir.
+                  </p>
+                  
+                  <div className="mt-6 flex flex-wrap justify-center md:justify-start gap-3">
+                    <span className="px-3 py-1 bg-white/5 rounded-lg border border-white/10 text-xs font-bold text-slate-400 uppercase tracking-widest">AI Fine-Tuning</span>
+                    <span className="px-3 py-1 bg-white/5 rounded-lg border border-white/10 text-xs font-bold text-slate-400 uppercase tracking-widest">Image Processing</span>
+                    <span className="px-3 py-1 bg-white/5 rounded-lg border border-white/10 text-xs font-bold text-slate-400 uppercase tracking-widest">Next.js Specialist</span>
+                    <span className="px-3 py-1 bg-white/5 rounded-lg border border-white/10 text-xs font-bold text-slate-400 uppercase tracking-widest">Full-Stack AI Developer</span>
+                  </div>
+               </div>
+             </div>
+             
+             <div className="mt-8 pt-6 border-t border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-500 font-medium">
+                <div>© 2026 Ekonomi ve Bilgi Merkezi • Tüm Veriler Orijinal Kaynaklıdır.</div>
+                <div className="flex items-center gap-4">
+                   <span>Fırat Üniversitesi Mühendislik Fakültesi</span>
+                   <div className="w-1 h-1 bg-slate-700 rounded-full" />
+                   <span>Elazığ, Türkiye</span>
+                </div>
+             </div>
+           </motion.div>
+        </footer>
 
       </div>
     </main>

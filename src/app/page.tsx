@@ -69,7 +69,7 @@ export default function Home() {
     const fetchViews = async () => {
       try {
         // Namespace'i daha özgün yaparak çakışmaları önleyelim
-        const res = await fetch("https://api.counterapi.dev/v1/finans-merkezi-v2/views/increment");
+        const res = await fetch("https://api.counterapi.dev/v1/finans-merkezi-v2/views/up");
         const data = await res.json();
         if (data.count) setViews(data.count);
       } catch (e) {

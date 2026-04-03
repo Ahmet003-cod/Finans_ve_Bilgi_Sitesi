@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { historicFigures, HistoricFigure } from "@/lib/geniuses";
 
-export const revalidate = 3600; // Her saat başı kontrol edilsin ama gün bazlı değişecek zaten.
+export const dynamic = "force-dynamic";
 
 // Basit PRNG (Güne göre her zaman aynı sonucu veren rastgeleleyici)
 function mulberry32(a: number) {

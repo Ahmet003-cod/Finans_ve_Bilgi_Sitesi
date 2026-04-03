@@ -33,7 +33,7 @@ const FEEDS = [
   { category: "İşletme", name: "İşletme ve Stratejik Yönetim", url: "https://news.google.com/rss/search?q=%22%C4%B0%C5%9Fletme+Y%C3%B6netimi%22+OR+%22Business+Management%22+OR+Giri%C5%9Fimcilik&hl=tr&gl=TR&ceid=TR:tr" }
 ];
 
-export const revalidate = 3600; // 1 saat önbellek (Sıkı limitten kaçınmak için makaleler nadir yenilenir)
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {

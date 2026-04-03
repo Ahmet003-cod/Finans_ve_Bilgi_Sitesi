@@ -15,7 +15,7 @@ const FEEDS = [
   { category: "Defense", source: "Savunma Sanayii Haberleri", url: "https://news.google.com/rss/search?q=Savunma+Sanayii+ASELSAN+BAYKAR+ROKETSAN+HAVELSAN+TUSAŞ+OR+Yapay+Zeka&hl=tr&gl=TR&ceid=TR:tr" },
 ];
 
-export const revalidate = 120; // Fast revalidation for news
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {

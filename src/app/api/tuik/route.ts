@@ -2,24 +2,24 @@ import { NextResponse } from "next/server";
 import { fetchTextWithTimeout } from "@/lib/security";
 import * as cheerio from "cheerio";
 
-export const revalidate = 1800; // 30 minutes caching for very low disruption
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   const VALIDATED_INFLATION = {
-    month: "Güncel Dönem",
-    tufeAnnual: 31.53,
-    ufeAnnual: 27.56,
-    tufeMonthly: 2.96,
-    ufeMonthly: 2.43,
-    note: "Aylık Artış: TÜFE aylık bazda %2,96, Yİ-ÜFE ise %2,43 artış gösterdi. Resmi TÜİK referanslarıdır.",
+    month: "Mart 2026",
+    tufeAnnual: 30.87,
+    ufeAnnual: 28.08,
+    tufeMonthly: 1.94,
+    ufeMonthly: 2.30,
+    note: "Mart 2026 Verileri: TÜFE aylık bazda %1,94, Yİ-ÜFE ise %2,30 artış gösterdi. Yıllık TÜFE %30,87 olarak gerçekleşti.",
     source: "Kaynak: Türkiye İstatistik Kurumu (tuik.gov.tr)"
   };
 
   try {
     // Aynı anda iki veriyi dinamik çek (Haber Bültenleri ve Gösterge Kartları)
     const [indicatorsHtml, listHtml] = await Promise.all([
-      fetchTextWithTimeout("https://www.tuik.gov.tr/Home/GostergelerPartial", 15000, { next: { revalidate: 1800 } }).catch(() => ""),
-      fetchTextWithTimeout("https://www.tuik.gov.tr/Home/HaberBultenleriPartial", 15000, { next: { revalidate: 1800 } }).catch(() => ""),
+      fetchTextWithTimeout("https://www.tuik.gov.tr/Home/GostergelerPartial", 15000, { next: { revalidate: 300 } }).catch(() => ""),
+      fetchTextWithTimeout("https://www.tuik.gov.tr/Home/HaberBultenleriPartial", 15000, { next: { revalidate: 300 } }).catch(() => ""),
     ]);
 
     // Dinamik Kazıma İşlemi
@@ -102,9 +102,14 @@ function parseIndicatorCard(html: string, keyword1: string, keyword2?: string) {
       }
       
       const month = $(card).find(".chartdiv span").first().text().trim().replace(/\s+/g, " ") || "Güncel Dönem";
-      // Örn: "31,53" veya "-1,8"
-      const rawValue = $(card).find(".chartfooter").first().text().trim().replace(/\./g, "").replace(",", ".");
-      const value = Number(rawValue);
+      // Örn: "31,53" veya "-1,8" -> try multiple selectors for robustness
+      let rawValue = $(card).find(".chartfooter").first().text().trim();
+      if (!rawValue) {
+        rawValue = $(card).find(".val").text().trim();
+      }
+      
+      const cleanValue = rawValue.replace(/\./g, "").replace(",", ".");
+      const value = Number(cleanValue);
       
       if (Number.isFinite(value)) {
         return { month, value };

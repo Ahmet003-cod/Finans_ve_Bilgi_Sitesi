@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { fallbackCalendar } from "@/lib/fallback-data";
 import { fetchTextWithTimeout } from "@/lib/security";
 
-export const revalidate = 600; // 10 minutes
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   let fedFundsRate = 0;
@@ -69,7 +69,15 @@ function buildEconomicEvents(fedTargetLower: number, fedTargetUpper: number) {
   nextTcmb.setDate(now.getDate() + 24); // Estimation
 
   const nextCpi = new Date(now);
-  nextCpi.setDate(3 + (now.getDate() > 3 ? 30 : 0)); // Roughly 3rd of each month
+  // TÜİK verileri her ayın 3'ünde saat 10:00'da açıklanır.
+  // Eğer bugün ayın 3'ü ise ve saat 10:00'u geçmişse bir sonraki ayı göster.
+  const isPastTen = now.getHours() >= 10;
+  if (now.getDate() > 3 || (now.getDate() === 3 && isPastTen)) {
+    nextCpi.setMonth(now.getMonth() + 1);
+    nextCpi.setDate(3);
+  } else {
+    nextCpi.setDate(3);
+  }
 
   return [
     {

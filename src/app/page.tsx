@@ -25,6 +25,29 @@ const TABS = [
 export default function Home() {
   const [activeTab, setActiveTab] = useState(TABS[0].id);
 
+  // Sync tab with URL hash for back button support
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace("#", "");
+      if (TABS.find(t => t.id === hash)) {
+        setActiveTab(hash);
+      }
+    };
+
+    // Set initial tab from hash
+    if (window.location.hash) {
+      handleHashChange();
+    }
+
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
+  const handleTabChange = (id: string) => {
+    setActiveTab(id);
+    window.location.hash = id;
+  };
+
   const [market, setMarket] = useState<MarketItem[]>([]);
   const [inflation, setInflation] = useState<InflationItem[]>([]);
   const [tuikNews, setTuikNews] = useState<TuikNewsItem[]>([]);
@@ -127,7 +150,7 @@ export default function Home() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={cn(
                   "relative px-3 py-2 md:px-4 md:py-3 rounded-t-xl transition-all font-semibold flex items-center gap-1.5 md:gap-2 text-xs md:text-sm whitespace-nowrap",
                   isActive ? "text-cyan-300" : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
@@ -670,12 +693,12 @@ function GeniusesTab({ figures }: { figures: HistoricFigure[] }) {
                initial={{ opacity: 0, scale: 0.95 }} 
                animate={{ opacity: 1, scale: 1 }} 
                transition={{ delay: i * 0.1 }}
-               className="glass-panel p-0 rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-xl ring-1 ring-amber-500/20 hover:ring-2 hover:ring-amber-500/50 group transition-all"
+               className="glass-panel p-0 rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-xl ring-1 ring-amber-500/20 hover:ring-2 hover:ring-amber-500/50 group transition-all min-h-[320px] md:min-h-0"
             >
                {/* Görsel Alanı */}
-               <div className="relative w-full md:w-2/5 h-48 md:h-auto overflow-hidden">
-                  <div className={`absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110`} style={{ backgroundImage: `url(${fig.imageUrl})` }}></div>
-                  <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-[#0f172a] via-[#0f172a]/80 to-transparent"></div>
+               <div className="relative w-full md:w-2/5 h-64 md:h-auto overflow-hidden flex-shrink-0">
+                  <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style={{ backgroundImage: `url(${fig.imageUrl})` }}></div>
+                  <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-[#0f172a] via-[#0f172a]/70 to-transparent"></div>
                   
                   {/* Badge */}
                   <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">

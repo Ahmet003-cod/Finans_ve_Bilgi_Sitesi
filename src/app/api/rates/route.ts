@@ -7,7 +7,7 @@ const httpsAgent = new https.Agent({
   rejectUnauthorized: false,
 });
 
-export const revalidate = 7200; // Cache for 2 hours (rates don't change by the minute)
+export const dynamic = "force-dynamic";
 
 // Basic helper to fetch via Node HTTPS directly to bypass Next.js strict fetch behaviors
 async function fetchWithAgent(url: string, timeoutMs: number = 8000): Promise<string> {

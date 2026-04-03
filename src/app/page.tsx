@@ -236,7 +236,7 @@ export default function Home() {
                   <h3 className="text-2xl font-bold text-white mb-2">Hakkımda</h3>
                   <p className="text-lg font-semibold text-cyan-400 mb-4">Ahmet Gün • Fırat Üniversitesi | Yönetim Bilişim Sistemleri 2. Sınıf</p>
                   <p className="text-slate-300 leading-relaxed max-w-4xl">
-                    Yapay zeka, görüntü işleme ve modern web teknolojileri üzerine uzmanlaşan bir geliştiriciyim. 
+                    Yapay zeka, görüntü işleme ve modern web teknolojileri üzerine uzmanlaşmaya çalışan bir geliştiriciyim. 
                     Yapay zeka kullanarak yenilikçi web sitesi tasarlama, yapay zeka modellerini **fine-tuning** ederek 
                     ihtiyaca özel yeni modeller kurma ve bu modelleri gerçek dünya verileriyle entegre etme alanları üzerine çalışıyorum. 
                     Bu platform, akademik disiplin ile finansal teknolojileri birleştiren yapay zeka destekli bir vizyonun eseridir.

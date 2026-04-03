@@ -104,20 +104,25 @@ export async function GET() {
       });
     }
 
-    // 3. BIST100 (Google Finance)
+    // 3. BIST100 (BloombergHT - En Güncel Yerel Kaynak)
     try {
-      const bistRes = await fetch("https://www.google.com/finance/quote/XU100:INDEXIST", { 
-        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
+      const bistRes = await fetch("https://www.bloomberght.com/borsa/endeks/bist-100", { 
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
         next: { revalidate: 60 } 
       });
+      
       if (bistRes.ok) {
         const bistHtml = await bistRes.text();
         const $bist = cheerio.load(bistHtml);
-        const priceText = $bist(".YMlS7e").first().text().replace(/[^0-9,.]/g, "").replace(".", "").replace(",", ".");
-        const bistPrice = parseFloat(priceText);
         
-        if (bistPrice > 0 && !quotesMap.has("BIST100")) {
-          quotesMap.set("BIST100", makeQuote("Borsa İstanbul (BIST 100)", "BIST100", bistPrice, bistPrice, 0, "Kaynak: Google / Investing (Anlık)"));
+        const priceText = $bist('span[data-type="son_fiyat"][data-id="XU100"]').text().trim();
+        const changeText = $bist('span[data-type="yuzde_degisim"][data-id="XU100"]').text().trim();
+        
+        const bistPrice = parseTRNum(priceText);
+        const bistChange = parseTRNum(changeText);
+        
+        if (bistPrice > 0) {
+          quotesMap.set("BIST100", makeQuote("Borsa İstanbul (BIST 100)", "BIST100", bistPrice, bistPrice, bistChange, "Kaynak: BloombergHT (Anlık)"));
         }
       }
     } catch (e) {

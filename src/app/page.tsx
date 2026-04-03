@@ -298,7 +298,7 @@ function OverviewTab({ market }: { market: MarketItem[] }) {
       <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="glass-panel p-6 rounded-3xl flex flex-col gap-6">
         <h3 className="text-xl font-bold flex items-center gap-2"><Sparkles className="text-amber-400"/> Sistem Notu</h3>
         <p className="text-sm text-slate-300 leading-relaxed italic border-l-2 border-amber-500 pl-3">
-          Veriler hiçbir şekilde yuvarlanmaz, virgülüne ve kuruşuna kadar "oldukları gibi" orijinal kaynaklarından ekrana yansıtılır. BIST100 tr.investing.com ile eşdeğer anlık değerleri yansıtır, diğer veriler serbest piyasa ve Kapalıçarşı (Truncgil) lokali dahilindendir.
+          Veriler hiçbir şekilde yuvarlanmaz, virgülüne ve kuruşuna kadar "oldukları gibi" orijinal kaynaklarından ekrana yansıtılır. Borsa İstanbul (BIST) tradingview.com ile eşdeğer anlık değerleri yansıtır, diğer veriler serbest piyasa ve Kapalıçarşı (Truncgil) lokali dahilindendir.
         </p>
       </motion.div>
 
@@ -451,7 +451,7 @@ function MarketsTab({ market, calendar, fedLower, fedUpper, tcmbRate, depositRat
                   <div className="text-[9px] uppercase tracking-wider bg-slate-800 text-slate-300 px-2 py-1 rounded inline-block border border-slate-700">{m.source}</div>
                </div>
                
-               {m.code === "BIST100" ? (
+               {m.code === "BIST" ? (
                   <div className="flex gap-4 sm:gap-8 items-end sm:items-center justify-between sm:justify-end w-full sm:w-auto">
                     <div className="text-right bg-emerald-950/20 px-4 py-2 rounded-xl border border-emerald-900/30">
                       <div className="text-[10px] uppercase text-emerald-500 font-bold tracking-wider mb-1">GÜNCEL DEĞER</div>

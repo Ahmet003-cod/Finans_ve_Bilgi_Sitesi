@@ -104,7 +104,7 @@ export async function GET() {
       });
     }
 
-    // 3. BIST100 (Multi-Source Robust Scraper)
+    // 3. BIST (Multi-Source Robust Scraper)
     const bistSources = [
       {
         name: "TradingView",
@@ -132,7 +132,7 @@ export async function GET() {
     ];
 
     for (const source of bistSources) {
-      if (quotesMap.has("BIST100")) break;
+      if (quotesMap.has("BIST")) break;
       try {
         const res = await fetch(source.url, { 
           headers: { 
@@ -173,22 +173,22 @@ export async function GET() {
           }
 
           if (price > 0) {
-            quotesMap.set("BIST100", makeQuote("Borsa İstanbul (BIST 100)", "BIST100", price, price, change, `Kaynak: ${source.name} (Anlık)`));
+            quotesMap.set("BIST", makeQuote("Borsa İstanbul", "BIST", price, price, change, `Kaynak: ${source.name} (Anlık)`));
             break;
           }
         }
       } catch (e) {
-        console.error(`BIST100 fetch error (${source.name}):`, e);
+        console.error(`BIST fetch error (${source.name}):`, e);
       }
     }
 
-    // Fallback BIST100
-    if (!quotesMap.has("BIST100")) {
+    // Fallback BIST
+    if (!quotesMap.has("BIST")) {
       if (truncgilResponse && truncgilResponse["xu100"]) {
         const b = truncgilResponse["xu100"];
-        quotesMap.set("BIST100", makeQuote("Borsa İstanbul (BIST 100)", "BIST100", parseTRNum(b.Alış), parseTRNum(b.Satış), parseTRNum(b.Değişim), "Kaynak: BIST Endeks"));
+        quotesMap.set("BIST", makeQuote("Borsa İstanbul", "BIST", parseTRNum(b.Alış), parseTRNum(b.Satış), parseTRNum(b.Değişim), "Kaynak: BIST Endeks"));
       } else {
-        quotesMap.set("BIST100", makeQuote("Borsa İstanbul (BIST 100)", "BIST100", 12942.35, 12942.35, -0.83, "Kaynak: Sabit Veri"));
+        quotesMap.set("BIST", makeQuote("Borsa İstanbul", "BIST", 12942.35, 12942.35, -0.83, "Kaynak: Sabit Veri"));
       }
     }
 

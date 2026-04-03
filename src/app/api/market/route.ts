@@ -104,29 +104,52 @@ export async function GET() {
       });
     }
 
-    // 3. BIST100 (BloombergHT - En Güncel Yerel Kaynak)
-    try {
-      const bistRes = await fetch("https://www.bloomberght.com/borsa/endeks/bist-100", { 
-        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
-        next: { revalidate: 60 } 
-      });
-      
-      if (bistRes.ok) {
-        const bistHtml = await bistRes.text();
-        const $bist = cheerio.load(bistHtml);
-        
-        const priceText = $bist('span[data-type="son_fiyat"][data-id="XU100"]').text().trim();
-        const changeText = $bist('span[data-type="yuzde_degisim"][data-id="XU100"]').text().trim();
-        
-        const bistPrice = parseTRNum(priceText);
-        const bistChange = parseTRNum(changeText);
-        
-        if (bistPrice > 0) {
-          quotesMap.set("BIST100", makeQuote("Borsa İstanbul (BIST 100)", "BIST100", bistPrice, bistPrice, bistChange, "Kaynak: BloombergHT (Anlık)"));
-        }
+    // 3. BIST100 (Multi-Source Robust Scraper)
+    const bistSources = [
+      {
+        name: "Doviz.com",
+        url: "https://borsa.doviz.com/endeksler/xu100-bist-100",
+        priceSelector: '.stock-details .value',
+        changeSelector: '.stock-details .change-rate'
+      },
+      {
+        name: "Google Finance",
+        url: "https://www.google.com/finance/quote/XU100:INDEXIST",
+        priceSelector: '.YMlS7e',
+        changeSelector: '.Jw7Xdb'
+      },
+      {
+        name: "BloombergHT",
+        url: "https://www.bloomberght.com/borsa/endeks/bist-100",
+        priceSelector: 'span[data-type="son_fiyat"][data-id="XU100"]',
+        changeSelector: 'span[data-type="yuzde_degisim"][data-id="XU100"]'
       }
-    } catch (e) {
-      console.error("BIST100 fetch error:", e);
+    ];
+
+    for (const source of bistSources) {
+      if (quotesMap.has("BIST100")) break;
+      try {
+        const res = await fetch(source.url, { 
+          headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36" },
+          next: { revalidate: 60 } 
+        });
+        if (res.ok) {
+          const html = await res.text();
+          const $ = cheerio.load(html);
+          const priceText = $(source.priceSelector).first().text().trim();
+          const changeText = $(source.changeSelector).first().text().trim();
+          
+          const price = parseTRNum(priceText);
+          const change = parseTRNum(changeText);
+
+          if (price > 0) {
+            quotesMap.set("BIST100", makeQuote("Borsa İstanbul (BIST 100)", "BIST100", price, price, change, `Kaynak: ${source.name} (Canlı)`));
+            break;
+          }
+        }
+      } catch (e) {
+        console.error(`BIST100 fetch error (${source.name}):`, e);
+      }
     }
 
     // Fallback BIST100
@@ -135,7 +158,7 @@ export async function GET() {
         const b = truncgilResponse["xu100"];
         quotesMap.set("BIST100", makeQuote("Borsa İstanbul (BIST 100)", "BIST100", parseTRNum(b.Alış), parseTRNum(b.Satış), parseTRNum(b.Değişim), "Kaynak: BIST Endeks"));
       } else {
-        quotesMap.set("BIST100", makeQuote("Borsa İstanbul (BIST 100)", "BIST100", 12626.35, 12626.35, 0.0, "Kaynak: Sabit Veri"));
+        quotesMap.set("BIST100", makeQuote("Borsa İstanbul (BIST 100)", "BIST100", 12942.35, 12942.35, -0.83, "Kaynak: Sabit Veri"));
       }
     }
 

@@ -64,12 +64,12 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [views, setViews] = useState<number>(0);
 
-  // View Counter Logic
+  // View Counter Logic - Sayfa girişi ve her sekme geçişinde (linke basıldığında) artsın
   useEffect(() => {
     const fetchViews = async () => {
       try {
-        // Increment and get views for this specific project
-        const res = await fetch("https://api.counterapi.dev/v1/finans-bilgi-merkezi/views/increment");
+        // Namespace'i daha özgün yaparak çakışmaları önleyelim
+        const res = await fetch("https://api.counterapi.dev/v1/finans-merkezi-v2/views/increment");
         const data = await res.json();
         if (data.count) setViews(data.count);
       } catch (e) {
@@ -77,7 +77,7 @@ export default function Home() {
       }
     };
     fetchViews();
-  }, []);
+  }, [activeTab]); // activeTab değiştiğinde (her linke basıldığında) artar
 
   useEffect(() => {
     const load = async () => {
@@ -158,8 +158,8 @@ export default function Home() {
               </div>
               
               <div className="px-3 py-1 bg-white/5 rounded-full border border-white/10 flex items-center gap-2 text-cyan-400 font-bold">
-                <ActivitySquare size={12} />
-                Canlı İzlenme: {views > 0 ? views.toLocaleString() : "..."}
+                <TrendingUp size={12} />
+                Görünme Sayısı: {views > 0 ? views.toLocaleString() : "..."}
               </div>
             </div>
           </div>

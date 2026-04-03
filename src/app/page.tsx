@@ -234,7 +234,7 @@ export default function Home() {
                
                <div className="flex-1 text-center md:text-left">
                   <h3 className="text-2xl font-bold text-white mb-2">Hakkımda</h3>
-                  <p className="text-lg font-semibold text-cyan-400 mb-4">Ahmet Gün • Fırat Üniversitesi | 2. Sınıf Öğrencisi</p>
+                  <p className="text-lg font-semibold text-cyan-400 mb-4">Ahmet Gün • Fırat Üniversitesi | Yönetim Bilişim Sistemleri 2. Sınıf</p>
                   <p className="text-slate-300 leading-relaxed max-w-4xl">
                     Yapay zeka, görüntü işleme ve modern web teknolojileri üzerine uzmanlaşan bir geliştiriciyim. 
                     Yapay zeka kullanarak yenilikçi web sitesi tasarlama, yapay zeka modellerini **fine-tuning** ederek 
@@ -254,7 +254,7 @@ export default function Home() {
              <div className="mt-8 pt-6 border-t border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-500 font-medium">
                 <div>© 2026 Ekonomi ve Bilgi Merkezi • Tüm Veriler Orijinal Kaynaklıdır.</div>
                 <div className="flex items-center gap-4">
-                   <span>Fırat Üniversitesi Mühendislik Fakültesi</span>
+                   <span>Fırat Üniversitesi İktisadi ve İdari Bilimler Fakültesi</span>
                    <div className="w-1 h-1 bg-slate-700 rounded-full" />
                    <span>Elazığ, Türkiye</span>
                 </div>

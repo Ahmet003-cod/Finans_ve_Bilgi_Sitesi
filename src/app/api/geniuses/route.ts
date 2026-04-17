@@ -1,71 +1,88 @@
 import { NextResponse } from "next/server";
-import { historicFigures, HistoricFigure } from "@/lib/geniuses";
+import { historicFiguresRegistry, HistoricFigure, historicFigures as fallbackFigures } from "@/lib/geniuses";
 
 export const dynamic = "force-dynamic";
 
-// Basit PRNG (Güne göre her zaman aynı sonucu veren rastgeleleyici)
-function mulberry32(a: number) {
-    return function() {
-      let t = a += 0x6D2B79F5;
-      t = Math.imul(t ^ t >>> 15, t | 1);
-      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-      return ((t ^ t >>> 14) >>> 0) / 4294967296;
-    }
-}
-
-// Güne özel, deterministik eleman seçer
-function pickRandom<T>(array: T[], count: number, prng: () => number): T[] {
-    const copy = [...array];
-    const result: T[] = [];
-    for(let i=0; i < count; i++) {
-        if(copy.length === 0) break;
-        const index = Math.floor(prng() * copy.length);
-        result.push(copy.splice(index, 1)[0]);
-    }
-    return result;
-}
-
-export async function GET() {
-    // 1. O günkü tarihi bul ve sayısal bir seed (Tohum) çıkar
-    const d = new Date();
-    // Türkiye saatine göre tarihi standardize edip string al (Yıl-Ay-Gün)
-    const seedString = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
-    let baseSeed = 0;
-    for (let i = 0; i < seedString.length; i++) {
-        baseSeed = (baseSeed << 5) - baseSeed + seedString.charCodeAt(i);
-        baseSeed |= 0; 
-    }
+/**
+ * Wikipedia API'den özet ve görsel çeken yardımcı fonksiyon
+ */
+async function fetchWikiData(slug: string, lang: "tr" | "en" = "tr"): Promise<Partial<HistoricFigure>> {
+  try {
+    const res = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(slug)}`, {
+      next: { revalidate: 86400 } // 24 saat önbelleğe al
+    });
     
-    // Algoritma başlatıcı (PRNG)
-    const randomFunc = mulberry32(baseSeed);
+    if (!res.ok) {
+        if (lang === "tr") return fetchWikiData(slug, "en"); // Türkçe yoksa İngilizce dene
+        return {};
+    }
 
-    // 2. Filtreler
-    const localGeniuses = historicFigures.filter(f => f.type === 'genius' && f.origin === 'local');
-    const foreignGeniuses = historicFigures.filter(f => f.type === 'genius' && f.origin === 'foreign');
-    const localEconomists = historicFigures.filter(f => f.type === 'economist' && f.origin === 'local');
-    const foreignEconomists = historicFigures.filter(f => f.type === 'economist' && f.origin === 'foreign');
+    const data = await res.json();
+    
+    return {
+      title: data.description || "",
+      bio: data.extract || "",
+      imageUrl: data.thumbnail?.source || data.originalimage?.source || "",
+      wikiUrl: data.content_urls?.desktop?.page || `https://${lang}.wikipedia.org/wiki/${slug}`,
+      achievements: [data.description].filter(Boolean)
+    };
+  } catch (e) {
+    console.error(`Wiki fetch error for ${slug}:`, e);
+    return {};
+  }
+}
 
-    // 3. Kullanıcının Kuralı: Toplam 3 Ekonomist, 3 Deha 
-    // Alt Kural: 2 Yerli(İslam), 1 Yabancı şeklinde ayarlayacağız (Toplam: 4 İslam, 2 Yabancı olacak)
-    const selectedGenLocal = pickRandom(localGeniuses, 2, randomFunc);
-    const selectedGenForeign = pickRandom(foreignGeniuses, 1, randomFunc);
+/**
+ * Gün bazlı deterministik seçim ve Wikipedia entegrasyonu
+ */
+export async function GET() {
+  try {
+    // 1. O günün "Offset" değerini hesapla (Epoch'tan beri geçen gün sayısı)
+    const dayIndex = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
+    
+    // 2. Filtreler (Sistemi 3 Yerli + 3 Yabancı olarak kurgulıyoruz)
+    const localPool = historicFiguresRegistry.filter(f => f.origin === "local");
+    const foreignPool = historicFiguresRegistry.filter(f => f.origin === "foreign");
 
-    const selectedEcoLocal = pickRandom(localEconomists, 2, randomFunc);
-    const selectedEcoForeign = pickRandom(foreignEconomists, 1, randomFunc);
+    // 3. Sıralı Seçim (Sequential Window)
+    // Her gün sıradaki 3 kişiyi alıyoruz. Liste bitince başa döner (%)
+    const getSelection = (pool: HistoricFigure[], count: number, offset: number) => {
+        const start = (offset * count) % pool.length;
+        const selection = [];
+        for (let i = 0; i < count; i++) {
+            selection.push(pool[(start + i) % pool.length]);
+        }
+        return selection;
+    };
 
-    // Hepsini birleştir 
-    const dailyFigures: HistoricFigure[] = [
-        ...selectedGenLocal,
-        ...selectedGenForeign,
-        ...selectedEcoLocal,
-        ...selectedEcoForeign
-    ];
+    const selectedLocal = getSelection(localPool, 3, dayIndex);
+    const selectedForeign = getSelection(foreignPool, 3, dayIndex);
 
-    // Array'i her gün belirli sırayla göstermek için bir kez daha kendi içinde hafifçe karıştıralım
-    const finalized = pickRandom(dailyFigures, dailyFigures.length, randomFunc);
+    // 4. Wikipedia'dan verileri çek (Paralel)
+    const allSelected = [...selectedLocal, ...selectedForeign];
+    const dataWithWiki = await Promise.all(
+        allSelected.map(async (fig) => {
+            const wikiData = await fetchWikiData(fig.wikiSlug);
+            return {
+                ...fig,
+                ...wikiData,
+                // Eğer Wikipedia'dan bio gelmezse veya çok kısaysa fallback'e güvenebiliriz
+                bio: wikiData.bio || "Bu şahsiyet hakkında detaylı bilgi Wikipedia üzerinde mevcuttur.",
+                imageUrl: wikiData.imageUrl || "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1000&auto=format&fit=crop"
+            };
+        })
+    );
 
     return NextResponse.json({
-        dateSeed: seedString,
-        data: finalized
+      updatedAt: new Date().toISOString(),
+      data: dataWithWiki.length > 0 ? dataWithWiki : fallbackFigures
     });
+
+  } catch (err) {
+    return NextResponse.json({
+      updatedAt: new Date().toISOString(),
+      data: fallbackFigures,
+      error: "API failed, returning fallback data"
+    });
+  }
 }

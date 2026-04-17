@@ -736,7 +736,7 @@ function GeniusesTab({ figures, articles }: { figures: HistoricFigure[], article
     <div className="space-y-10">
       <div className="flex flex-col gap-2">
          <h2 className="text-2xl md:text-3xl font-bold flex items-center gap-3"><Lightbulb className="text-amber-400"/> Tarihin Seçkin Zekaları</h2>
-         <p className="text-sm text-slate-400">Her gün 3 Ekonomist ve 3 Deha bu panoda değişerek belirecektir. Ansiklopedik derinliğe sahip yerli, milli, İslami ve evrensel şahsiyetlerin iz bırakan notları.</p>
+         <p className="text-sm text-slate-400">Her gün 3 Yerli (İslam dahil) ve 3 Yabancı deha bu panoda değişerek belirecektir. Wikipedia destekli dinamik ansiklopedik havuz.</p>
          <div className="mt-2 text-xs font-bold px-3 py-1 bg-white/5 w-fit rounded-lg text-amber-500">Günün Zaman Tohumu Aktif</div>
       </div>
 
@@ -777,16 +777,16 @@ function GeniusesTab({ figures, articles }: { figures: HistoricFigure[], article
                {/* Metin Alanı */}
                <div className="flex-1 p-6 flex flex-col justify-center bg-slate-900/60 backdrop-blur-sm z-10 -mt-10 md:mt-0 rounded-t-3xl md:rounded-l-none md:rounded-r-3xl">
                   <h3 className="text-xl font-bold text-white mb-1">{fig.name}</h3>
-                  <div className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-4">{fig.title}</div>
+                  <div className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-4 line-clamp-1">{fig.title}</div>
                   
-                  <p className="text-sm text-slate-300 leading-relaxed italic mb-5 border-l-2 border-white/20 pl-3">"{fig.bio}"</p>
+                  <p className="text-sm text-slate-300 leading-relaxed italic mb-5 border-l-2 border-white/20 pl-3 line-clamp-4">"{fig.bio}"</p>
                   
                   <div className="space-y-2 mb-4">
                      <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Başlıca Katkıları</div>
-                     {fig.achievements.map((ach, idx) => (
+                     {fig.achievements?.slice(0, 2).map((ach, idx) => (
                         <div key={idx} className="flex items-start gap-2">
                            <Target size={14} className="text-amber-400 mt-0.5 flex-shrink-0" />
-                           <span className="text-xs text-slate-200 leading-normal">{ach}</span>
+                           <span className="text-xs text-slate-200 leading-normal line-clamp-1">{ach}</span>
                         </div>
                      ))}
                   </div>
@@ -798,6 +798,7 @@ function GeniusesTab({ figures, articles }: { figures: HistoricFigure[], article
                </div>
             </motion.a>
          ))}
+
 
 
       </div>

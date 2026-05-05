@@ -6,12 +6,12 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const VALIDATED_INFLATION = {
-    month: "Mart 2026",
-    tufeAnnual: 30.87,
-    ufeAnnual: 28.08,
-    tufeMonthly: 1.94,
-    ufeMonthly: 2.30,
-    note: "Mart 2026 Verileri: TÜFE aylık bazda %1,94, Yİ-ÜFE ise %2,30 artış gösterdi. Yıllık TÜFE %30,87 olarak gerçekleşti.",
+    month: "Nisan 2026",
+    tufeAnnual: 32.37,
+    ufeAnnual: 28.59,
+    tufeMonthly: 3.18,
+    ufeMonthly: 3.17,
+    note: "Nisan 2026 Verileri: TÜFE aylık bazda %3,18, Yİ-ÜFE ise %3,17 artış gösterdi. Yıllık TÜFE %32,37 olarak gerçekleşti.",
     source: "Kaynak: Türkiye İstatistik Kurumu (tuik.gov.tr)"
   };
 
@@ -62,6 +62,30 @@ export async function GET() {
     }
 
     const news = parseTuikNews(listHtml);
+    
+    // Haberlerden veri ayıkla (Haberler bazen gösterge kartlarından daha hızlı güncellenir)
+    const newsExtracted = extractValuesFromNews(news);
+    
+    if (newsExtracted.month) {
+       finalData.month = newsExtracted.month;
+       dynamicFound = true;
+    }
+    if (newsExtracted.tufeAnnual) {
+       finalData.tufeAnnual = newsExtracted.tufeAnnual;
+       dynamicFound = true;
+    }
+    if (newsExtracted.tufeMonthly) {
+       finalData.tufeMonthly = newsExtracted.tufeMonthly;
+       dynamicFound = true;
+    }
+    if (newsExtracted.ufeAnnual) {
+       finalData.ufeAnnual = newsExtracted.ufeAnnual;
+       dynamicFound = true;
+    }
+    if (newsExtracted.ufeMonthly) {
+       finalData.ufeMonthly = newsExtracted.ufeMonthly;
+       dynamicFound = true;
+    }
 
     return NextResponse.json({
       source: dynamicFound ? "live_dynamic" : "fallback",
@@ -152,6 +176,56 @@ function parseTuikNews(html: string) {
     }
   });
   return results;
+}
+
+/**
+ * Haber bültenlerinden regex ile veri ayıklama
+ */
+function extractValuesFromNews(news: any[]) {
+  const extracted: any = {};
+  
+  for (const item of news) {
+    const title = item.title.toLowerCase();
+    const summary = item.summary.toLowerCase();
+    
+    // Ay ve Yıl Tespiti (Sadece ilk bulduğunu al, zaten haberler tarih sırasına göredir)
+    if (!extracted.month) {
+      const matchMonth = item.title.match(/(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+\d{4}/i);
+      if (matchMonth) extracted.month = matchMonth[0];
+    }
+
+    // Tüketici Fiyat Endeksi (TÜFE)
+    if (title.includes("tuketici fiyat endeksi") || title.includes("tufe")) {
+      // Yıllık değişim
+      const annualMatch = summary.match(/yillik\s+%\s?(\d+[,.]\d+)/i) || summary.match(/yillik\s+degisim\s+%\s?(\d+[,.]\d+)/i);
+      if (annualMatch && !extracted.tufeAnnual) {
+        extracted.tufeAnnual = parseFloat(annualMatch[1].replace(",", "."));
+      }
+      
+      // Aylık değişim
+      const monthlyMatch = summary.match(/aylik\s+%\s?(\d+[,.]\d+)/i) || summary.match(/aylik\s+degisim\s+%\s?(\d+[,.]\d+)/i);
+      if (monthlyMatch && !extracted.tufeMonthly) {
+        extracted.tufeMonthly = parseFloat(monthlyMatch[1].replace(",", "."));
+      }
+    }
+    
+    // Üretici Fiyat Endeksi (Yİ-ÜFE)
+    if (title.includes("yurt ici uretici") || title.includes("yi-ufe") || title.includes("uretici fiyat endeksi")) {
+      // Yıllık değişim
+      const annualMatch = summary.match(/yillik\s+%\s?(\d+[,.]\d+)/i) || summary.match(/yillik\s+degisim\s+%\s?(\d+[,.]\d+)/i);
+      if (annualMatch && !extracted.ufeAnnual) {
+        extracted.ufeAnnual = parseFloat(annualMatch[1].replace(",", "."));
+      }
+      
+      // Aylık değişim
+      const monthlyMatch = summary.match(/aylik\s+%\s?(\d+[,.]\d+)/i) || summary.match(/aylik\s+degisim\s+%\s?(\d+[,.]\d+)/i);
+      if (monthlyMatch && !extracted.ufeMonthly) {
+        extracted.ufeMonthly = parseFloat(monthlyMatch[1].replace(",", "."));
+      }
+    }
+  }
+  
+  return extracted;
 }
 
 // Analizi akıllı şekillendirici

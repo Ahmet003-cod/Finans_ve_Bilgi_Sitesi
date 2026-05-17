@@ -22,7 +22,7 @@ async function fetchWikiData(slug: string, lang: "tr" | "en" = "tr"): Promise<Pa
     return {
       title: data.description || "",
       bio: data.extract || "",
-      imageUrl: data.thumbnail?.source || data.originalimage?.source || "",
+      imageUrl: data.originalimage?.source || data.thumbnail?.source || "",
       wikiUrl: data.content_urls?.desktop?.page || `https://${lang}.wikipedia.org/wiki/${slug}`,
       achievements: [data.description].filter(Boolean)
     };
@@ -37,15 +37,13 @@ async function fetchWikiData(slug: string, lang: "tr" | "en" = "tr"): Promise<Pa
  */
 export async function GET() {
   try {
-    // 1. O günün "Offset" değerini hesapla (Epoch'tan beri geçen gün sayısı)
+    // 1. O günün "Offset" değerini hesapla
     const dayIndex = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
     
-    // 2. Filtreler (Sistemi 3 Yerli + 3 Yabancı olarak kurgulıyoruz)
-    const localPool = historicFiguresRegistry.filter(f => f.origin === "local");
-    const foreignPool = historicFiguresRegistry.filter(f => f.origin === "foreign");
+    // 2. Filtreler: Sadece Ekonomistler
+    const economistsPool = historicFiguresRegistry.filter(f => f.type === "economist");
 
-    // 3. Sıralı Seçim (Sequential Window)
-    // Her gün sıradaki 3 kişiyi alıyoruz. Liste bitince başa döner (%)
+    // 3. Sıralı Seçim (Günde 4 Ekonomist)
     const getSelection = (pool: HistoricFigure[], count: number, offset: number) => {
         const start = (offset * count) % pool.length;
         const selection = [];
@@ -55,19 +53,16 @@ export async function GET() {
         return selection;
     };
 
-    const selectedLocal = getSelection(localPool, 3, dayIndex);
-    const selectedForeign = getSelection(foreignPool, 3, dayIndex);
+    const selectedEconomists = getSelection(economistsPool, 4, dayIndex);
 
     // 4. Wikipedia'dan verileri çek (Paralel)
-    const allSelected = [...selectedLocal, ...selectedForeign];
     const dataWithWiki = await Promise.all(
-        allSelected.map(async (fig) => {
+        selectedEconomists.map(async (fig) => {
             const wikiData = await fetchWikiData(fig.wikiSlug);
             return {
                 ...fig,
                 ...wikiData,
-                // Eğer Wikipedia'dan bio gelmezse veya çok kısaysa fallback'e güvenebiliriz
-                bio: wikiData.bio || "Bu şahsiyet hakkında detaylı bilgi Wikipedia üzerinde mevcuttur.",
+                bio: wikiData.bio || "Bu ekonomist hakkında detaylı bilgi Wikipedia üzerinde mevcuttur.",
                 imageUrl: wikiData.imageUrl || "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=1000&auto=format&fit=crop"
             };
         })

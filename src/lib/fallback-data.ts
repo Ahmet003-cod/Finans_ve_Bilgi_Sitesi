@@ -33,12 +33,15 @@ export type NewsItem = {
 };
 
 export const fallbackMarket: MarketItem[] = [
-  { label: "Gram Altin", code: "GRAM", buy: 3498.2, sell: 3520.5, dailyPct: 0.82, source: "Yedek veri" },
-  { label: "Ceyrek Altin", code: "CEYREK", buy: 6130.1, sell: 6182.5, dailyPct: 0.8, source: "Yedek veri" },
-  { label: "Yarim Altin", code: "YARIM", buy: 12260.2, sell: 12365.0, dailyPct: 0.8, source: "Yedek veri" },
-  { label: "Tam Altin", code: "TAM", buy: 24520.0, sell: 24730.0, dailyPct: 0.8, source: "Yedek veri" },
-  { label: "USD/TRY", code: "USD_TRY", buy: 35.08, sell: 35.12, dailyPct: 0.31, source: "Yedek veri" },
-  { label: "EUR/TRY", code: "EUR_TRY", buy: 37.95, sell: 38.02, dailyPct: 0.22, source: "Yedek veri" },
+  { label: "Dolar (USD/TRY)", code: "USD", buy: 45.08, sell: 45.15, dailyPct: 0.31, source: "Yedek veri (2026)" },
+  { label: "Euro (EUR/TRY)", code: "EUR", buy: 48.95, sell: 49.02, dailyPct: 0.22, source: "Yedek veri (2026)" },
+  { label: "Borsa Istanbul (BIST 100)", code: "BIST100", buy: 12850.5, sell: 12850.5, dailyPct: 1.2, source: "Yedek veri (2026)" },
+  { label: "Bitcoin (BTC/USD)", code: "BTC", buy: 85200.0, sell: 85200.0, dailyPct: 2.5, source: "Yedek veri (2026)" },
+  { label: "Gram Altin", code: "GRAM", buy: 4498.2, sell: 4520.5, dailyPct: 0.82, source: "Yedek veri (2026)" },
+  { label: "Ceyrek Altin", code: "CEYREK", buy: 7130.1, sell: 7182.5, dailyPct: 0.8, source: "Yedek veri (2026)" },
+  { label: "Yarim Altin", code: "YARIM", buy: 14260.2, sell: 14365.0, dailyPct: 0.8, source: "Yedek veri (2026)" },
+  { label: "Tam Altin", code: "TAM", buy: 28520.0, sell: 28730.0, dailyPct: 0.8, source: "Yedek veri (2026)" },
+  { label: "Gumus (Gram)", code: "SILVER", buy: 55.50, sell: 56.10, dailyPct: 1.1, source: "Yedek veri (2026)" },
 ];
 
 export const fallbackInflation: InflationPoint[] = [

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bot, CalendarClock, CandlestickChart, LayoutGrid, ShieldAlert, Sparkles, TrendingUp, TrendingDown, ActivitySquare, ExternalLink, ImageIcon, Target, Cpu, BookOpen, Landmark, Building2, Percent, Globe, Coins, Info, Lightbulb } from "lucide-react";
+import { Bot, CalendarClock, CandlestickChart, LayoutGrid, Sparkles, TrendingUp, TrendingDown, ActivitySquare, ExternalLink, ImageIcon, Target, Cpu, Landmark, Building2, Percent, Globe, Coins, Info, Lightbulb, ArrowRightLeft, BookOpen, MessageSquare, Send, User, Wallet, ShieldCheck, Clock, Search, BarChart3, PieChart, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HistoricFigure } from "@/lib/geniuses";
 
@@ -11,15 +12,13 @@ type TuikNewsItem = { title: string; date: string; summary: string; link: string
 type InflationItem = { month: string; tufeAnnual: number; ufeAnnual: number; tufeMonthly: number; ufeMonthly: number; note: string; source: string };
 type CalendarItem = { title: string; date: string; impact: string; source: string };
 type NewsItem = { title: string; titleTr: string; link: string; source: string; category: string; publishedAt: string; guide: string };
-type ArticleItem = { title: string; titleTr: string; link: string; source: string; category: string; publishedAt: string; guide: string };
 
 const TABS = [
-  { id: "overview", label: "Genel Bakış", icon: LayoutGrid },
   { id: "inflation", label: "✨ TÜİK Son Dakika", icon: TrendingUp },
   { id: "markets", label: "Piyasa & Faiz", icon: ActivitySquare },
-  { id: "tech_defense", label: "Yapay Zeka & Savunma", icon: ShieldAlert },
-  { id: "geniuses", label: "💡 Dehalar & Ekonomistler", icon: Lightbulb },
-  { id: "articles", label: "📚 Makale & Okuma", icon: BookOpen },
+  { id: "economists", label: "💡 Ekonomistler", icon: Lightbulb },
+  { id: "concepts", label: "📖 Finans Kavramları", icon: BookOpen },
+  { id: "investment_agent", label: "🚀 Yatırım Uzmanı", icon: Target },
 ];
 
 export default function Home() {
@@ -34,7 +33,6 @@ export default function Home() {
       }
     };
 
-    // Set initial tab from hash
     if (window.location.hash) {
       handleHashChange();
     }
@@ -52,9 +50,11 @@ export default function Home() {
   const [inflation, setInflation] = useState<InflationItem[]>([]);
   const [tuikNews, setTuikNews] = useState<TuikNewsItem[]>([]);
   const [calendar, setCalendar] = useState<CalendarItem[]>([]);
-  const [news, setNews] = useState<NewsItem[]>([]);
-  const [articles, setArticles] = useState<ArticleItem[]>([]);
-  const [geniuses, setGeniuses] = useState<HistoricFigure[]>([]);
+  const [economists, setEconomists] = useState<HistoricFigure[]>([]);
+  const [concepts, setConcepts] = useState<any[]>([]);
+  const [chatMessages, setChatMessages] = useState<{role: string, content: string}[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatLoading, setIsChatLoading] = useState(false);
   const [fedRate, setFedRate] = useState<number>(0);
   const [fedUpper, setFedUpper] = useState<number>(0);
   const [fedLower, setFedLower] = useState<number>(0);
@@ -62,42 +62,28 @@ export default function Home() {
   const [depositRates, setDepositRates] = useState<{min: number, max: number}>({min: 44.0, max: 45.0});
   const [updatedAt, setUpdatedAt] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
-  const [views, setViews] = useState<number>(0);
-
-  useEffect(() => {
-    const fetchViews = async () => {
-      try {
-        // Namespace'i daha özgün yaparak çakışmaları önleyelim
-        const res = await fetch("https://api.counterapi.dev/v1/finans-merkezi-v2/views/up");
-        const data = await res.json();
-        if (data.count) setViews(data.count);
-      } catch (e) {
-        console.error("Counter API failed", e);
-      }
-    };
-    fetchViews();
-  }, []); // Sadece sayfa ilk açıldığında (giriş yapıldığında) artar
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [marketRes, tuikRes, calRes, newsRes, articlesRes, ratesRes, geniusesRes] = await Promise.all([
-          fetch("/api/market").then((r) => r.json()),
-          fetch("/api/tuik").then((r) => r.json()),
-          fetch("/api/calendar").then((r) => r.json()),
-          fetch("/api/news").then((r) => r.json()),
-          fetch("/api/articles").then((r) => r.json()),
+        const [marketRes, tuikRes, calRes, ratesRes, geniusesRes] = await Promise.all([
+          fetch("/api/market").then((r) => r.json()).catch(() => ({ data: [], updatedAt: new Date().toISOString() })),
+          fetch("/api/tuik").then((r) => { if (!r.ok) throw new Error(`tuik ${r.status}`); return r.json(); }).catch(() => ({ data: [], news: [] })),
+          fetch("/api/calendar").then((r) => r.json()).catch(() => ({ data: [], fedFundsRate: 0, fedTargetUpper: 0, fedTargetLower: 0 })),
           fetch("/api/rates").then((r) => r.json()).catch(() => ({ data: { tcmbPolicyRate: 37.0, depositMin: 44.0, depositMax: 45.0 } })),
           fetch("/api/geniuses").then((r) => r.json()).catch(() => ({ data: [] })),
         ]);
+
+        fetch("/api/concepts")
+          .then((r) => r.json())
+          .then((res) => setConcepts(res.data ?? []))
+          .catch(() => setConcepts([]));
 
         setMarket(marketRes.data ?? []);
         setInflation(tuikRes.data ?? []);
         setTuikNews(tuikRes.news ?? []);
         setCalendar(calRes.data ?? []);
-        setNews(newsRes.data ?? []);
-        setArticles(articlesRes.data ?? []);
-        setGeniuses(geniusesRes.data ?? []);
+        setEconomists(geniusesRes.data ?? []);
         setFedRate(Number(calRes.fedFundsRate ?? 0));
         setFedUpper(Number(calRes.fedTargetUpper ?? 0));
         setFedLower(Number(calRes.fedTargetLower ?? 0));
@@ -145,7 +131,7 @@ export default function Home() {
               initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
               className="text-slate-400 text-sm md:text-base font-medium"
             >
-              Kapalıçarşı Borsa Verileri, Resmi TÜİK İstatistikleri, AI ve Savunma Haber Sistemi
+              TÜİK, KAP, Borsa İstanbul, Kapalıçarşı ve küresel kaynaklardan derlenen anlık finans ve analiz merkezi.
             </motion.p>
             <div className="mt-3 text-xs text-slate-500 flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2">
@@ -154,11 +140,6 @@ export default function Home() {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
                 Son güncelleme: {formatDate(updatedAt)}
-              </div>
-              
-              <div className="px-3 py-1 bg-white/5 rounded-full border border-white/10 flex items-center gap-2 text-cyan-400 font-bold">
-                <TrendingUp size={12} />
-                Görünme Sayısı: {views > 0 ? views.toLocaleString() : "..."}
               </div>
             </div>
           </div>
@@ -207,515 +188,596 @@ export default function Home() {
                 transition={{ duration: 0.3 }}
                 className="w-full"
               >
-                {activeTab === "overview" && <OverviewTab market={market} />}
                 {activeTab === "inflation" && <TuikTab inflationCurrent={inflationCurrent} news={tuikNews} />}
                 {activeTab === "markets" && <MarketsTab market={market} calendar={calendar} fedLower={fedLower} fedUpper={fedUpper} tcmbRate={tcmbRate} depositRates={depositRates} />}
-                {activeTab === "tech_defense" && <TechDefenseTab news={news} />}
-                {activeTab === "geniuses" && <GeniusesTab figures={geniuses} articles={articles} />}
-                {activeTab === "articles" && <ArticlesTab articles={articles} />}
+                {activeTab === "economists" && <EconomistsTab figures={economists} />}
+                {activeTab === "concepts" && <ConceptsTab concepts={concepts} chatMessages={chatMessages} setChatMessages={setChatMessages} chatInput={chatInput} setChatInput={setChatInput} isChatLoading={isChatLoading} setIsChatLoading={setIsChatLoading} />}
+                {activeTab === "investment_agent" && <InvestmentAgentTab market={market} />}
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Hakkımda Bölümü (Footer) */}
-        <footer className="mt-auto pt-12 pb-8 border-t border-white/5">
-           <motion.div 
-             initial={{ opacity: 0, scale: 0.98 }}
-             animate={{ opacity: 1, scale: 1 }}
-             transition={{ delay: 0.5 }}
-             className="glass-panel p-8 rounded-3xl relative overflow-hidden"
-           >
-             <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-[100px] pointer-events-none" />
-             <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
-               <div className="w-24 h-24 md:w-32 md:h-32 rounded-3xl bg-gradient-to-br from-cyan-600 to-indigo-600 flex items-center justify-center border border-white/20 shadow-2xl flex-shrink-0">
-                  <Bot className="text-white w-12 h-12 md:w-16 md:h-16" />
-               </div>
-               
-               <div className="flex-1 text-center md:text-left">
-                  <h3 className="text-2xl font-bold text-white mb-2">Hakkımda</h3>
-                  <p className="text-lg font-semibold text-cyan-400 mb-4">Ahmet Gün • Fırat Üniversitesi | Yönetim Bilişim Sistemleri 2. Sınıf</p>
-                  <p className="text-slate-300 leading-relaxed max-w-4xl">
-                    Yapay zeka, görüntü işleme ve modern web teknolojileri üzerine uzmanlaşmaya çalışan bir geliştiriciyim. 
-                    Yapay zeka kullanarak yenilikçi web sitesi tasarlama, yapay zeka modellerini **fine-tuning** ederek 
-                    ihtiyaca özel yeni modeller kurma ve bu modelleri gerçek dünya verileriyle entegre etme alanları üzerine çalışıyorum. 
-                    Bu platform, akademik disiplin ile finansal teknolojileri birleştiren yapay zeka destekli bir vizyonun eseridir.
-                  </p>
-                  
-                  <div className="mt-6 flex flex-wrap justify-center md:justify-start gap-3">
-                    <span className="px-3 py-1 bg-white/5 rounded-lg border border-white/10 text-xs font-bold text-slate-400 uppercase tracking-widest">AI Fine-Tuning</span>
-                    <span className="px-3 py-1 bg-white/5 rounded-lg border border-white/10 text-xs font-bold text-slate-400 uppercase tracking-widest">Image Processing</span>
-                    <span className="px-3 py-1 bg-white/5 rounded-lg border border-white/10 text-xs font-bold text-slate-400 uppercase tracking-widest">Next.js Specialist</span>
-                    <span className="px-3 py-1 bg-white/5 rounded-lg border border-white/10 text-xs font-bold text-slate-400 uppercase tracking-widest">Full-Stack AI Developer</span>
-                  </div>
-               </div>
-             </div>
-             
-             <div className="mt-8 pt-6 border-t border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-500 font-medium">
-                <div>© 2026 Ekonomi ve Bilgi Merkezi • Tüm Veriler Orijinal Kaynaklıdır.</div>
-                <div className="flex items-center gap-4">
-                   <span>Fırat Üniversitesi İktisadi ve İdari Bilimler Fakültesi</span>
-                   <div className="w-1 h-1 bg-slate-700 rounded-full" />
-                   <span>Elazığ, Türkiye</span>
-                </div>
-             </div>
-           </motion.div>
-        </footer>
+        {/* News Ticker (Marquee) */}
+        <div className="mt-auto pt-4 mb-4">
+           <div className="glass-panel py-3 rounded-2xl overflow-hidden relative border-cyan-500/10 shadow-[0_0_20px_rgba(34,211,238,0.05)]">
+              <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-[#0f172a] to-transparent z-10" />
+              <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-[#0f172a] to-transparent z-10" />
+              
+              <div className="flex whitespace-nowrap animate-marquee gap-12 items-center">
+                 {tuikNews.map((n, i) => (
+                    <div key={`tuik-${i}`} className="flex items-center gap-3 text-xs font-medium">
+                       <span className="bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">TÜİK SON DAKİKA</span>
+                       <span className="text-slate-300">{n.title}</span>
+                       <span className="w-1 h-1 bg-slate-600 rounded-full" />
+                    </div>
+                 ))}
+                 {market.slice(0, 5).map((m, i) => (
+                    <div key={`market-${i}`} className="flex items-center gap-3 text-xs font-medium">
+                       <span className="bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">PİYASA</span>
+                       <span className="text-slate-300">{m.label}:</span>
+                       <span className={m.dailyPct >= 0 ? "text-emerald-400" : "text-rose-400"}>
+                          {formatNum(m.sell)} ({m.dailyPct >= 0 ? "+" : ""}{m.dailyPct}%)
+                       </span>
+                       <span className="w-1 h-1 bg-slate-600 rounded-full" />
+                    </div>
+                 ))}
+              </div>
+           </div>
+        </div>
 
+        {/* Footer */}
+        <footer className="mt-auto pt-12 pb-8 border-t border-white/5">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-500 font-medium">
+            <div>© 2026 Ekonomi ve Bilgi Merkezi • Tüm Veriler Orijinal Kaynaklıdır.</div>
+            <div className="flex items-center gap-4">
+              <span>Elazığ, Türkiye</span>
+            </div>
+          </div>
+        </footer>
       </div>
     </main>
   );
 }
 
-function OverviewTab({ market }: { market: MarketItem[] }) {
-  const topMarket = market.slice(0, 8);
-  return (
-    <div className="grid gap-6 md:gap-8 grid-cols-1 lg:grid-cols-3">
-      {/* Market Mini Overview */}
-      <div className="lg:col-span-2 space-y-6">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {topMarket.map((m, i) => (
-             <motion.div 
-               key={m.code} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }}
-               className="glass-card p-5 rounded-3xl flex flex-col justify-between hover:bg-white/5 transition-all"
-             >
-                <div className="flex justify-between items-start">
-                  <div className="text-sm font-bold text-slate-300">{m.label}</div>
-                </div>
-                {/* Devasa sayılar için eksiksiz formatlama */}
-                <div className="text-2xl md:text-3xl font-black mt-2 text-white">{formatNum(m.sell)}</div>
-                <div className="flex justify-between items-center mt-3">
-                  <div className={cn("text-xs font-black", (m.dailyPct || 0) >= 0 ? "text-emerald-400" : "text-rose-400")}>
-                    {(m.dailyPct || 0) >= 0 ? "▲" : "▼"} {formatNum(Math.abs(m.dailyPct || 0))}%
-                  </div>
-                </div>
-                <div className="text-[8px] uppercase tracking-wider text-slate-500 mt-2 truncate bg-slate-900/50 py-1 px-2 rounded w-fit">{m.source}</div>
-             </motion.div>
-          ))}
-        </div>
-      </div>
-
-      <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="glass-panel p-6 rounded-3xl flex flex-col gap-6">
-        <h3 className="text-xl font-bold flex items-center gap-2"><Sparkles className="text-amber-400"/> Sistem Notu</h3>
-        <p className="text-sm text-slate-300 leading-relaxed italic border-l-2 border-amber-500 pl-3">
-          Veriler hiçbir şekilde yuvarlanmaz, virgülüne ve kuruşuna kadar "oldukları gibi" orijinal kaynaklarından ekrana yansıtılır. Döviz verileri serbest piyasa, altın verileri Kapalıçarşı (Truncgil) lokali dahilindendir.
-        </p>
-      </motion.div>
-
-      {/* Makroekonomik Piyasa Yorum Çıkarımları */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="lg:col-span-3 glass-panel p-6 md:p-8 rounded-3xl mt-2">
-         <h3 className="text-2xl font-bold mb-6 flex items-center gap-3"><Info className="text-sky-400"/> Makro Piyasa Dinamikleri & Ansiklopedik Yorum</h3>
-         
-         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="glass-card p-6 rounded-2xl border border-amber-500/20 bg-amber-950/10">
-               <h4 className="font-bold flex items-center gap-2 text-amber-400 mb-3"><Coins size={18}/> Altın (Ons & Gram) Etkisi</h4>
-               <p className="text-sm text-slate-300 leading-relaxed">
-                 <strong className="text-white">Artarsa:</strong> Yatırımcıların riskten kaçıp "güvenli limana" sığındığını gösterir. Dünyada savaş, kriz veya belirsizlik hakimdir. Hisse senetleri genelde düşer.<br/><br/>
-                 <strong className="text-white">Azalırsa:</strong> Küresel risk iştahı artmıştır. Ekonomi canlanıyordur, yatırımcılar daha riskli (Borsa, Kripto) varlıklara yönelir.
-               </p>
-            </div>
-
-            <div className="glass-card p-6 rounded-2xl border border-emerald-500/20 bg-emerald-950/10">
-               <h4 className="font-bold flex items-center gap-2 text-emerald-400 mb-3"><TrendingUp size={18}/> Dolar & Euro Etkisi</h4>
-               <p className="text-sm text-slate-300 leading-relaxed">
-                 <strong className="text-white">Artarsa:</strong> Gelişmekte olan ülkeler (Türkiye gibi) için ithalat maliyetleri ve enflasyon artar. Merkez Bankaları faiz artırmak zorunda kalabilir.<br/><br/>
-                 <strong className="text-white">Azalırsa:</strong> İthal girdiler ucuzlar, genel enflasyon baskısı hafifler. Şirket kârlılıkları döviz borcu olanlar için iyileşir.
-               </p>
-            </div>
-
-            <div className="glass-card p-6 rounded-2xl border border-indigo-500/20 bg-indigo-950/10">
-               <h4 className="font-bold flex items-center gap-2 text-indigo-400 mb-3"><Globe size={18}/> Gelişmiş vs Gelişmekte Olan</h4>
-               <p className="text-sm text-slate-300 leading-relaxed">
-                 <strong className="text-white">Gelişmiş Ülkelerde (ABD, AB):</strong> Faizler düştüğünde paralar yatırıma ve dünyaya saçılarak borsaları tırmandırır.<br/><br/>
-                 <strong className="text-white">Gelişmekte Olan Ülkelerde:</strong> Bu saçılan paralar ülkeye girerse (Sıcak Para) borsaları rekor kırar, kur düşer. Ancak global faiz artarsa para anavatana döner ve kur fırlar.
-               </p>
-            </div>
-         </div>
-      </motion.div>
-    </div>
-  );
-}
+// --- ALT BİLEŞENLER ---
 
 function TuikTab({ inflationCurrent, news }: { inflationCurrent: InflationItem, news: TuikNewsItem[] }) {
   if (!inflationCurrent) return null;
   return (
     <div className="space-y-8">
-      
-      <div className="flex items-center gap-2 px-2">
-         <span className="px-3 py-1 bg-green-950/40 text-green-400 text-xs font-bold uppercase tracking-wider rounded border border-green-800/50">KAYNAK GARANTİSİ: TÜRKiYE iSTATiSTiK KURUMU</span>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <motion.div className="glass-panel p-6 rounded-3xl bg-gradient-to-br from-slate-900 to-cyan-950/20">
+          <div className="text-xs font-bold text-cyan-400 mb-1 uppercase">{inflationCurrent.month} Yıllık</div>
+          <div className="text-3xl font-black text-white">%{formatNum(inflationCurrent.tufeAnnual)} <span className="text-sm font-normal opacity-60">TÜFE</span></div>
+          <div className="text-3xl font-black text-white mt-2">%{formatNum(inflationCurrent.ufeAnnual)} <span className="text-sm font-normal opacity-60">Yİ-ÜFE</span></div>
+        </motion.div>
+        <motion.div className="glass-panel p-6 rounded-3xl bg-gradient-to-br from-slate-900 to-amber-950/20">
+          <div className="text-xs font-bold text-amber-400 mb-1 uppercase">Aylık Değişim</div>
+          <div className="text-3xl font-black text-white">%{formatNum(inflationCurrent.tufeMonthly)} <span className="text-sm font-normal opacity-60">TÜFE</span></div>
+          <div className="text-3xl font-black text-white mt-2">%{formatNum(inflationCurrent.ufeMonthly)} <span className="text-sm font-normal opacity-60">Yİ-ÜFE</span></div>
+        </motion.div>
+        <motion.div className="glass-panel p-6 rounded-3xl">
+          <h4 className="font-bold text-sky-400 mb-2">Analiz:</h4>
+          <p className="text-xs text-slate-300 leading-relaxed">{inflationCurrent.note}</p>
+        </motion.div>
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-panel p-6 rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/20">
-          <div className="text-sm font-bold text-cyan-400 mb-1 uppercase tracking-widest">{inflationCurrent.month} • Tam (1) Yıllık Veriler</div>
-          <div className="text-4xl font-black text-white mt-3">%{formatNum(inflationCurrent.tufeAnnual)} <span className="text-lg text-slate-400 font-normal">TÜFE Yıllık</span></div>
-          <div className="text-4xl font-black text-white mt-3">%{formatNum(inflationCurrent.ufeAnnual)} <span className="text-lg text-slate-400 font-normal">Yİ-ÜFE Yıllık</span></div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-panel p-6 rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/20">
-          <div className="text-sm font-bold text-amber-400 mb-1 uppercase tracking-widest">İçinde Bulunulan Ay Değerleri</div>
-          <div className="text-4xl font-black text-white mt-3">%{formatNum(inflationCurrent.tufeMonthly)} <span className="text-lg text-slate-400 font-normal">TÜFE Aylık</span></div>
-          <div className="text-4xl font-black text-white mt-3">%{formatNum(inflationCurrent.ufeMonthly)} <span className="text-lg text-slate-400 font-normal">Yİ-ÜFE Aylık</span></div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-panel p-6 rounded-3xl md:col-span-2 lg:col-span-1 flex flex-col justify-center">
-            <h4 className="font-bold text-sky-400 mb-2">Makro Etki Çıkarımı:</h4>
-            <p className="text-sm text-slate-200 leading-relaxed font-medium">{inflationCurrent.note}</p>
-        </motion.div>
-      </div>
-
-      <div className="w-full h-px bg-white/10" />
-
-      {/* TÜİK Bültenleri */}
-      <div>
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-2xl font-bold flex items-center gap-2"><TrendingUp className="text-rose-400"/> TÜİK Son Dakika Pano Bültenleri</h3>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {news.map((item, i) => (
-            <motion.a 
-              href={item.link} target="_blank" rel="noreferrer"
-              key={item.title + i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1 }} 
-              className="glass-card flex flex-col rounded-3xl overflow-hidden group hover:ring-2 hover:ring-rose-500/50"
-            >
-              <div className="h-40 bg-gradient-to-tr from-slate-900 to-slate-800 relative w-full overflow-hidden flex items-center justify-center">
-                 <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&q=80')] bg-cover bg-center opacity-30 mix-blend-overlay" />
-                 <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/80 to-transparent z-10" />
-                 <ImageIcon className="text-white/20 w-32 h-32 absolute group-hover:scale-110 transition-transform duration-700" />
-                 <span className="z-20 text-xs font-black tracking-[0.2em] uppercase text-rose-500/80 -rotate-12 select-none pointer-events-none drop-shadow-md">TÜİK BÜLTENİ PANO</span>
-              </div>
-              <div className="p-6 flex flex-col flex-1 relative z-20 -mt-10 bg-slate-900/40 backdrop-blur-md">
-                <div className="text-[10px] font-bold tracking-wider uppercase text-rose-400 mb-2">{item.date}</div>
-                <h4 className="text-lg font-bold text-slate-100 group-hover:text-rose-300 transition-colors line-clamp-3 mb-3">{item.title}</h4>
-                <p className="text-xs text-slate-400 leading-relaxed line-clamp-3 mb-6">{item.summary}</p>
-                <div className="mt-auto pt-4 border-t border-white/5 flex items-center justify-between">
-                  <span className="text-[9px] text-slate-100 font-black uppercase tracking-widest bg-rose-700 px-3 py-1.5 rounded-full shadow-[0_0_10px_rgba(225,29,72,0.4)]">Kesinlikle tuik.gov.tr'den alınmıştır</span>
-                  <ExternalLink size={14} className="text-rose-400" />
-                </div>
-              </div>
-            </motion.a>
-          ))}
-        </div>
-
-        {/* Enflasyon Yorumu Panosu */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-panel p-6 md:p-8 rounded-3xl mt-12 bg-slate-900/60">
-           <h3 className="text-2xl font-bold mb-6 flex items-center gap-3"><Info className="text-sky-400"/> Enflasyon (TÜFE/ÜFE) Ekonomik Dinamikleri</h3>
-           
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="glass-card p-6 rounded-2xl border border-rose-500/20 bg-rose-950/10">
-                 <h4 className="font-bold flex items-center gap-2 text-rose-400 mb-3"><TrendingUp size={18}/> Yükselirse (Artarsa) Etkileri</h4>
-                 <div className="space-y-4">
-                   <div>
-                     <span className="text-xs uppercase tracking-widest text-slate-500 font-bold">Tüketici (TÜFE) Açısından:</span>
-                     <p className="text-sm text-slate-300 leading-relaxed mt-1">Alım gücü düşer. Vatandaş aynı paraya daha az ürün alabilir. Merkez Bankası talebi kısmak için faiz artışına gitmek zorunda kalır.</p>
-                   </div>
-                   <div>
-                     <span className="text-xs uppercase tracking-widest text-slate-500 font-bold">Üretici (ÜFE) Açısından:</span>
-                     <p className="text-sm text-slate-300 leading-relaxed mt-1">Hammadde, enerji ve lojistik maliyetleri artmıştır. Üretici bu farkı kârından düşmek istemezse doğrudan etiket fiyatlarına (TÜFE'ye) yansıtarak sarmalı tetikler.</p>
-                   </div>
-                 </div>
-              </div>
-
-              <div className="glass-card p-6 rounded-2xl border border-emerald-500/20 bg-emerald-950/10">
-                 <h4 className="font-bold flex items-center gap-2 text-emerald-400 mb-3"><TrendingDown size={18}/> Düşerse (Azalırsa) Etkileri</h4>
-                 <div className="space-y-4">
-                   <div>
-                     <span className="text-xs uppercase tracking-widest text-slate-500 font-bold">Tüketici (TÜFE) Açısından:</span>
-                     <p className="text-sm text-slate-300 leading-relaxed mt-1">Fiyat artış hızı yavaşlar (Dikkat: Fiyatlar ucuzlamaz, sadece normalden az artar). Alım gücü erozyonu durur. Faiz indirimleri başlar.</p>
-                   </div>
-                   <div>
-                     <span className="text-xs uppercase tracking-widest text-slate-500 font-bold">Üretici (ÜFE) Açısından:</span>
-                     <p className="text-sm text-slate-300 leading-relaxed mt-1">Maliyet baskısı azalır. Üretici rahat nefes alır, yatırım yapma, kredi çekme ve istihdamı artırma eğilimine girer. Ekonomik büyüme hızlanır.</p>
-                   </div>
-                 </div>
-              </div>
-           </div>
-        </motion.div>
-      </div>
-    </div>
-  );
-}
-
-function MarketsTab({ market, calendar, fedLower, fedUpper, tcmbRate, depositRates }: { market: MarketItem[], calendar: CalendarItem[], fedLower: number, fedUpper: number, tcmbRate: number, depositRates: { min: number, max: number } }) {
-  return (
-    <div className="grid lg:grid-cols-2 gap-8">
-      {/* Dev Piyasa Alış-Satış */}
-      <div className="glass-panel p-6 md:p-8 rounded-3xl">
-         <h3 className="text-2xl font-bold mb-6 flex items-center gap-2"><CandlestickChart className="text-emerald-400"/> Borsa ve Serbest Piyasa Düzeyi</h3>
-         <div className="space-y-4">
-           {market.map((m, i) => (
-             <motion.div key={m.code} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} className="glass-card p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-white/5">
-               <div className="flex-1">
-                  <div className="font-bold text-lg text-slate-100 mb-1">{m.label}</div>
-                  <div className="text-[9px] uppercase tracking-wider bg-slate-800 text-slate-300 px-2 py-1 rounded inline-block border border-slate-700">{m.source}</div>
-               </div>
-               
-                <div className="flex gap-4 sm:gap-8 items-end sm:items-center justify-between sm:justify-end w-full sm:w-auto">
-                  <div className="text-left bg-rose-950/20 px-4 py-2 rounded-xl border border-rose-900/30">
-                    <div className="text-[10px] uppercase text-slate-500 font-bold tracking-wider mb-1">Alış</div>
-                    <div className="text-lg font-semibold text-rose-300">{formatNum(m.buy)}</div>
-                  </div>
-                  <div className="text-right bg-emerald-950/20 px-4 py-2 rounded-xl border border-emerald-900/30">
-                    <div className="text-[10px] uppercase text-slate-500 font-bold tracking-wider mb-1">Satış</div>
-                    <div className="text-xl font-black text-emerald-300">{formatNum(m.sell)}</div>
-                  </div>
-                </div>
-             </motion.div>
-           ))}
-         </div>
-      </div>
-
-      {/* YENİ: Merkez Bankası ve Faiz Blokları */}
-      <div className="space-y-6">
-         <div className="glass-panel p-6 md:p-8 rounded-3xl h-full flex flex-col">
-            <h3 className="text-2xl font-bold mb-6 flex items-center gap-2">
-               <Landmark className="text-indigo-400"/> Merkez Bankası ve Faizler
-            </h3>
-
-            <div className="space-y-6 flex-1 flex flex-col justify-center">
-               {/* FED Card */}
-               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card p-5 rounded-2xl border border-indigo-500/20 relative overflow-hidden group">
-                 <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-indigo-500/20 transition-all pointer-events-none" />
-                 <div className="flex justify-between items-start mb-3">
-                   <div>
-                     <div className="text-sm font-bold text-indigo-300 flex items-center gap-2"><Building2 size={16}/> Amerika Merkez Bankası (FED)</div>
-                     <p className="text-xs text-slate-400 mt-1">Global Referans Faiz Aralığı - Canlı Veri</p>
-                   </div>
-                 </div>
-                 <div className="flex items-end gap-3">
-                    <div className="text-3xl font-black text-white">%{fedLower.toFixed(2)} - %{fedUpper.toFixed(2)}</div>
-                 </div>
-                 <div className="mt-4 pt-3 border-t border-white/5 flex gap-2">
-                    <span className="text-[10px] uppercase text-indigo-400 font-black tracking-widest bg-indigo-950/50 px-2 py-1 rounded">Kaynak: St. Louis FED / Fred API</span>
-                 </div>
-               </motion.div>
-
-               {/* TCMB Card */}
-               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card p-5 rounded-2xl border border-rose-500/20 relative overflow-hidden group">
-                 <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/10 rounded-full blur-3xl group-hover:bg-rose-500/20 transition-all pointer-events-none" />
-                 <div className="flex justify-between items-start mb-3">
-                   <div>
-                     <div className="text-sm font-bold text-rose-300 flex items-center gap-2"><Building2 size={16}/> Türkiye Cumhuriyet Merkez Bankası (TCMB)</div>
-                     <p className="text-xs text-slate-400 mt-1">Politika Faizi (1 Hafta Vadeli Repo) - Referanslı</p>
-                   </div>
-                 </div>
-                 <div className="flex items-end gap-3 mb-4">
-                    <div className="text-4xl font-black text-rose-400">%{tcmbRate.toFixed(2)}</div>
-                 </div>
-                 
-                 {/* TCMB Dinamik Linkler (Kullanıcının Verdiği Metin) */}
-                 <div className="space-y-2 mt-2">
-                    <a href="https://www.qnbfi.com/" target="_blank" rel="noreferrer" className="block text-[11px] font-medium text-slate-300 bg-black/40 hover:bg-black/60 px-3 py-2 rounded-lg border border-white/5 transition-colors">
-                       <span className="text-rose-400 font-bold mr-1">QNB Invest:</span> TCMB Mart 2026 Faiz Kararı Açıklandı! Politika Faizi Sabit Kaldı
-                    </a>
-                    <a href="https://www.infoyatirim.com/" target="_blank" rel="noreferrer" className="block text-[11px] font-medium text-slate-300 bg-black/40 hover:bg-black/60 px-3 py-2 rounded-lg border border-white/5 transition-colors">
-                       <span className="text-rose-400 font-bold mr-1">İnfo Yatırım:</span> Merkez Bankası Faiz Kararı Detayları
-                    </a>
-                    <a href="#" target="_blank" rel="noreferrer" className="block text-[11px] font-medium text-slate-300 bg-black/40 hover:bg-black/60 px-3 py-2 rounded-lg border border-white/5 transition-colors">
-                       <span className="text-rose-400 font-bold mr-1">Mall Report:</span> TCMB Mart Ayı Toplantı Özeti
-                    </a>
-                 </div>
-               </motion.div>
-
-               {/* Mevduat Faizi Card */}
-               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="glass-card p-5 rounded-2xl border border-emerald-500/20 relative overflow-hidden group">
-                 <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl group-hover:bg-emerald-500/20 transition-all pointer-events-none" />
-                 <div className="flex justify-between items-start mb-3">
-                   <div>
-                     <div className="text-sm font-bold text-emerald-300 flex items-center gap-2"><Percent size={16}/> Banka Mevduat Faizi Oranları</div>
-                     <p className="text-xs text-slate-400 mt-1">Tahmini Güncel Brüt Getiri Bandı</p>
-                   </div>
-                 </div>
-                 <div className="flex items-end gap-3 mb-4">
-                    <div className="text-3xl font-black text-emerald-400">%{depositRates.min.toFixed(2)} - %{depositRates.max.toFixed(2)}</div>
-                 </div>
-                 
-                 {/* Hesapkurdu Analiz Linkleri */}
-                 <div className="space-y-2 mt-2 flex flex-col sm:flex-row gap-2">
-                    <a href="https://www.hesapkurdu.com/mevduat" target="_blank" rel="noreferrer" className="flex-1 text-[11px] font-medium text-slate-300 bg-black/40 hover:bg-black/60 px-3 py-2 rounded-lg border border-white/5 transition-colors flex items-center gap-2">
-                       <ExternalLink size={12} className="text-emerald-400"/> Hesapkurdu: Güncel Mevduat
-                    </a>
-                    <a href="https://www.hesapkurdu.com/mevduat" target="_blank" rel="noreferrer" className="flex-1 text-[11px] font-medium text-slate-300 bg-black/40 hover:bg-black/60 px-3 py-2 rounded-lg border border-white/5 transition-colors flex items-center gap-2">
-                       <ExternalLink size={12} className="text-emerald-400"/> 50k-100k TL Getiri Analizi
-                    </a>
-                 </div>
-               </motion.div>
-
+        {news.slice(0, 6).map((item, i) => (
+          <a href={item.link} target="_blank" rel="noreferrer" key={i} className="glass-card p-5 rounded-2xl group border border-white/5 hover:ring-2 hover:ring-rose-500/50 transition-all">
+            <div className="flex justify-between items-start mb-2">
+              <div className="text-[10px] text-rose-400 font-bold">{item.date}</div>
+              <div className="text-[10px] bg-rose-500/10 text-rose-300 px-2 py-0.5 rounded-full font-bold uppercase tracking-tighter">Kaynak: TÜİK</div>
             </div>
-         </div>
+            <h4 className="text-sm font-bold text-slate-100 line-clamp-2 mb-2 group-hover:text-rose-300">{item.title}</h4>
+            <p className="text-xs text-slate-400 line-clamp-3">{item.summary}</p>
+          </a>
+        ))}
       </div>
 
-    </div>
-  );
-}
-
-function TechDefenseTab({ news }: { news: NewsItem[] }) {
-  const defenseFound = news.some(n => n.category === "Defense");
-
-  return (
-    <div className="space-y-8">
-      <div className="glass-panel p-6 md:p-8 rounded-3xl">
-        <h3 className="text-3xl font-bold mb-2 flex flex-wrap items-center gap-3">
-          <Cpu className="text-cyan-400" size={32}/> 
-          Yapay Zeka Şirketleri 
-          <span className="text-slate-600 font-light">&amp;</span> 
-          <Target className="text-rose-500" size={32}/> 
-          Milli Savunma Sanayii
-        </h3>
-        <p className="text-slate-400 mb-8 max-w-3xl">Baykar, TUSAŞ, ASELSAN gibi Milli Savunma değerleri ile OpenAI, NVIDIA gibi teknoloji devlerinin şirket haberleri harmanlanmış şekilde sunulur. Kesin kaynak doğrulamalıdır.</p>
-        
-        {!defenseFound && (
-          <div className="text-rose-400 text-sm mb-4 border border-rose-500/30 p-4 rounded-xl bg-rose-950/20">
-            Savunma Sanayii API bağlantısı güncelleniyor, aşağıdaki kaynaklar şu an sadece Global AI tabanlı olabilir.
+      {/* Eğitici Bilgi Pankartları (TÜİK) */}
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* ÜFE Grubu */}
+        <div className="glass-panel p-6 rounded-3xl border-l-4 border-l-rose-500 bg-gradient-to-r from-rose-500/5 to-transparent">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-rose-500/20 rounded-lg text-rose-400"><TrendingUp size={20}/></div>
+            <h4 className="font-bold text-lg text-white">ÜFE Artarsa (Maliyetler Yükselirse)</h4>
           </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {news.map((item, i) => {
-            const isDefense = item.category === "Defense";
-            return (
-             <motion.div key={item.link + i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1 }} className="glass-card flex flex-col rounded-3xl group overflow-hidden border border-white/5">
-               <div className={cn("h-48 w-full relative overflow-hidden", isDefense ? "bg-rose-950/50" : "bg-cyan-950/50")}>
-                  <div className={cn("absolute inset-0 bg-cover bg-center opacity-40 mix-blend-overlay", isDefense ? "bg-[url('https://images.unsplash.com/photo-1579551460395-932f7a9afda1?auto=format&fit=crop&q=80')]" : "bg-[url('https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&q=80')]")} />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] to-transparent z-10" />
-                  
-                  <div className="absolute top-4 left-4 z-20 flex gap-2">
-                    <div className={cn("text-[9px] font-black tracking-widest uppercase px-3 py-1.5 rounded-full shadow-lg", isDefense ? "bg-rose-600 text-white shadow-rose-900/50" : "bg-cyan-600 text-white shadow-cyan-900/50")}>
-                       {isDefense ? "🛡️ SAVUNMA SANAYİİ HABERİ" : "🤖 YAPAY ZEKA TEKNOLOJİSİ"}
-                    </div>
-                  </div>
-                  <div className="absolute bottom-4 left-4 z-20 flex flex-col">
-                    <div className="text-xs text-slate-300 font-semibold mb-1 opacity-80">{new Date(item.publishedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
-                    <div className="text-[10px] text-white/50 bg-black/50 px-2 py-1 rounded inline-block border border-white/10 w-fit">KAYNAK: {item.source} (Google Haberler)</div>
-                  </div>
-               </div>
-               
-               <div className="p-6 md:p-8 flex-1 flex flex-col justify-between bg-slate-900/60 z-30">
-                 <a href={item.link} target="_blank" rel="noreferrer" className="text-xl font-bold text-slate-100 group-hover:text-white transition-colors mb-6 drop-shadow-sm leading-snug line-clamp-3">
-                   {item.titleTr || item.title}
-                 </a>
-                 <div className={cn("mt-auto border p-4 rounded-xl", isDefense ? "bg-rose-950/30 border-rose-900/50" : "bg-indigo-950/30 border-indigo-900/50")}>
-                   <div className={cn("flex items-center gap-2 text-[10px] uppercase font-black tracking-widest mb-2", isDefense ? "text-rose-400" : "text-indigo-400")}>
-                     {isDefense ? <Target size={12}/> : <Sparkles size={12}/>} 
-                     {isDefense ? "STRATEJİK SAVUNMA NOTU:" : "AKILLI SİSTEM TAVSİYESİ:"}
-                   </div>
-                   <p className="text-sm text-slate-300 leading-relaxed font-medium">
-                     {item.guide}
-                   </p>
-                 </div>
-               </div>
-             </motion.div>
-            );
-          })}
+          <p className="text-sm text-slate-300 leading-relaxed mb-3">
+            Üretim maliyetleri artar. Fabrikanın ödediği elektrik ve hammadde zamlanırsa, bu durum aylar sonra tezgahtaki ürüne zam olarak yansır.
+          </p>
+          <div className="p-3 bg-rose-500/10 rounded-xl text-[11px] text-rose-300 italic border border-rose-500/20">
+            <strong>GÜNLÜK HAYAT:</strong> Fırıncının aldığı un ve maya zamlanırsa, bir süre sonra mahalledeki ekmek fiyatı kaçınılmaz olarak artar.
+          </div>
         </div>
+        <div className="glass-panel p-6 rounded-3xl border-l-4 border-l-emerald-500 bg-gradient-to-r from-emerald-500/5 to-transparent">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400"><TrendingDown size={20}/></div>
+            <h4 className="font-bold text-lg text-white">ÜFE Azalırsa (Maliyetler Düşerse)</h4>
+          </div>
+          <p className="text-sm text-slate-300 leading-relaxed mb-3">
+            Üretimdeki baskı azalır. Hammadde ucuzlayınca üretici nefes alır, bu da zamların durmasına hatta bazı ürünlerin ucuzlamasına yol açar.
+          </p>
+          <div className="p-3 bg-emerald-500/10 rounded-xl text-[11px] text-emerald-300 italic border border-emerald-500/20">
+            <strong>GÜNLÜK HAYAT:</strong> Mazot fiyatı düşerse, tarladaki domatesin şehre gelme masrafı azalır ve pazardaki fiyatlar aşağı çekilebilir.
+          </div>
+        </div>
+
+        {/* TÜFE Grubu */}
+        <div className="glass-panel p-6 rounded-3xl border-l-4 border-l-amber-500 bg-gradient-to-r from-amber-500/5 to-transparent">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-amber-500/20 rounded-lg text-amber-400"><TrendingUp size={20}/></div>
+            <h4 className="font-bold text-lg text-white">TÜFE Artarsa (Hayat Pahalılaşırsa)</h4>
+          </div>
+          <p className="text-sm text-slate-300 leading-relaxed mb-3">
+            Market ve çarşı fiyatları yükselir. Alım gücü düştüğü için aynı maaşla geçen aya göre daha az ürün satın alınabilir hale gelinir.
+          </p>
+          <div className="p-3 bg-amber-500/10 rounded-xl text-[11px] text-amber-300 italic border border-amber-500/20">
+            <strong>GÜNLÜK HAYAT:</strong> Geçen ay 500 TL'ye dolan pazar arabası, bu ay ancak 650 TL'ye doluyorsa TÜFE artmış demektir.
+          </div>
+        </div>
+        <div className="glass-panel p-6 rounded-3xl border-l-4 border-l-cyan-500 bg-gradient-to-r from-cyan-500/5 to-transparent">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-cyan-500/20 rounded-lg text-cyan-400"><TrendingDown size={20}/></div>
+            <h4 className="font-bold text-lg text-white">TÜFE Azalırsa (Enflasyon Düşerse)</h4>
+          </div>
+          <p className="text-sm text-slate-300 leading-relaxed mb-3">
+            Fiyat artış hızı yavaşlar. Fiyatların uçuşu durunca paramızın değeri korunur, insanların geleceğe dair kaygıları azalır.
+          </p>
+          <div className="p-3 bg-cyan-500/10 rounded-xl text-[11px] text-cyan-300 italic border border-cyan-500/20">
+            <strong>GÜNLÜK HAYAT:</strong> Kantindeki tost fiyatı aylardır değişmiyorsa veya artış hızı yavaşlamışsa, enflasyon kontrol altına alınıyor demektir.
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 glass-panel p-4 rounded-2xl bg-white/5 border border-white/10 text-center italic text-xs text-slate-400">
+        "Kısaca: ÜFE mutfaktaki (fabrikadaki) hazırlık maliyetidir, TÜFE ise masaya gelen tabağın (marketin) fiyatıdır."
       </div>
     </div>
   );
 }
 
-function ArticlesTab({ articles }: { articles: ArticleItem[] }) {
-  if (!articles || articles.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center p-12 glass-panel rounded-3xl text-center">
-        <BookOpen size={48} className="text-slate-500 mb-4" />
-        <h3 className="text-xl font-bold text-slate-300">Makaleler Yükleniyor veya Bulunamadı</h3>
-        <p className="text-sm text-slate-500 mt-2">Literatür taranıyor, bu biraz zaman alabilir...</p>
-      </div>
-    );
-  }
+function MarketsTab({ market, calendar, fedLower, fedUpper, tcmbRate, depositRates }: any) {
+  const bistData = market.find((m: any) => m.code === "BIST100");
 
   return (
     <div className="space-y-8">
-      <div className="glass-panel p-6 md:p-8 rounded-3xl">
-        <h3 className="text-3xl font-bold mb-2 flex items-center gap-3">
-          <BookOpen className="text-indigo-400" size={32}/> 
-          Makale <span className="text-slate-600 font-light">&amp;</span> Araştırma Okumaları
-        </h3>
-        <p className="text-slate-400 mb-8 max-w-3xl">
-          Yönetim Bilişim Sistemleri, Yazılım, Yapay Zeka, Ajanlar (Agents), Kuantum, Finans, Sigorta ve İşletme özelinde son 7 günde yayınlanan etkili akademik, küresel ve yerel (DergiPark vb.) içerikler tarafımızca derlenip Türkçeye çevrilerek sunulmaktadır.
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {articles.map((item, i) => {
-            // Category Renklendirmesi
-            let catColor = "text-indigo-400";
-            let bgAccent = "bg-indigo-950/20";
-            let ringAccent = "ring-indigo-500/50";
-            
-            if (["Yazılım", "Kuantum"].includes(item.category)) {
-                catColor = "text-cyan-400";
-                bgAccent = "bg-cyan-950/20";
-                ringAccent = "ring-cyan-500/50";
-            } else if (["Yapay Zeka", "Agent"].includes(item.category)) {
-                catColor = "text-emerald-400";
-                bgAccent = "bg-emerald-950/20";
-                ringAccent = "ring-emerald-500/50";
-            } else if (["Finans", "Sigorta", "İşletme"].includes(item.category)) {
-                catColor = "text-amber-400";
-                bgAccent = "bg-amber-950/20";
-                ringAccent = "ring-amber-500/50";
-            }
-
-            return (
-              <motion.a 
-                href={item.link} target="_blank" rel="noreferrer"
-                key={item.titleTr + i} 
-                initial={{ opacity: 0, scale: 0.95 }} 
-                animate={{ opacity: 1, scale: 1 }} 
-                transition={{ delay: (i % 6) * 0.1 }} 
-                className={cn(
-                  "glass-card flex flex-col rounded-3xl overflow-hidden group hover:ring-2 transition-all duration-300 relative",
-                  ringAccent
-                )}
-              >
-                {/* Çok Şık Üst Gradient */}
-                <div className={cn("h-40 w-full relative overflow-hidden", bgAccent)}>
-                   <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&q=80')] bg-cover bg-center opacity-30 mix-blend-overlay group-hover:scale-110 transition-transform duration-[1.5s]" />
-                   <div className="absolute inset-0 bg-gradient-to-b from-[#0f172a]/40 via-[#0f172a]/80 to-[#0f172a] z-10" />
-                   
-                   <div className="absolute top-4 left-4 z-20">
-                     <div className={cn("px-3 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase shadow-lg border border-white/10 flex items-center gap-1.5", catColor, "bg-slate-900/80 backdrop-blur-md")}>
-                        <Sparkles size={10} />
-                        {item.category}
-                     </div>
-                   </div>
-                   
-                   <div className="absolute bottom-4 left-4 right-4 z-20 flex justify-between items-end">
-                     <div>
-                       <div className="text-xs text-slate-300 font-bold mb-1 opacity-90">{new Date(item.publishedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
-                       <div className="text-[9px] uppercase tracking-widest text-slate-500 bg-black/40 px-2 py-0.5 rounded backdrop-blur">
-                         KAYNAK: {item.source}
-                       </div>
-                     </div>
-                     <ExternalLink size={16} className="text-slate-400 group-hover:text-white transition-colors" />
-                   </div>
+      {/* BIST 100 Hero Card */}
+      {bistData && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-panel p-8 rounded-[2.5rem] relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950/20 to-slate-900 border-indigo-500/20"
+        >
+          <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none -mr-32 -mt-32" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-[100px] pointer-events-none -ml-20 -mb-20" />
+          
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="flex items-center gap-6">
+              <div className="w-20 h-20 rounded-3xl bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30 shadow-xl">
+                <BarChart3 className="text-indigo-400 w-10 h-10" />
+              </div>
+              <div>
+                <div className="flex items-center gap-3 mb-1">
+                  <h3 className="text-2xl font-bold text-white">Borsa İstanbul</h3>
+                  <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 text-[10px] font-bold rounded-md border border-indigo-500/30 uppercase tracking-wider">BIST 100</span>
                 </div>
+                <p className="text-slate-400 text-sm font-medium">Türkiye'nin en büyük 100 şirketinin performans endeksi</p>
+              </div>
+            </div>
+            
+            <div className="flex flex-col items-center md:items-end gap-2">
+              <div className="text-5xl font-black text-white tracking-tighter flex items-baseline gap-2">
+                {formatNum(bistData.sell)}
+                <span className="text-lg font-bold text-slate-500 uppercase tracking-widest">Puan</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className={cn(
+                  "flex items-center gap-1.5 px-4 py-1.5 rounded-full font-bold text-sm border shadow-lg",
+                  bistData.dailyPct >= 0 
+                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
+                    : "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                )}>
+                  {bistData.dailyPct >= 0 ? <TrendingUp size={16}/> : <TrendingDown size={16}/>}
+                  %{bistData.dailyPct >= 0 ? "+" : ""}{formatNum(bistData.dailyPct)}
+                </div>
+                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest italic">{bistData.source}</div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
-                 <div className="p-6 md:p-8 flex-1 flex flex-col justify-between bg-slate-900/60 z-30">
-                  <h4 className="text-lg font-bold text-slate-100 group-hover:text-white transition-colors drop-shadow-sm leading-snug line-clamp-3 mb-6">
-                    {item.titleTr}
-                  </h4>
-                  
-                  <div className={cn("mt-auto p-4 rounded-xl border border-white/5", bgAccent)}>
-                    <div className={cn("text-[9px] uppercase font-black tracking-widest mb-2 flex items-center gap-1.5", catColor)}>
-                      <Target size={12}/> ANALİZ VE İPUCU
-                    </div>
-                    <p className="text-sm text-slate-300 leading-relaxed font-medium">
-                      {item.guide}
-                    </p>
+      <div className="grid lg:grid-cols-2 gap-8">
+        <div className="glass-panel p-6 rounded-3xl">
+          <h3 className="text-xl font-bold mb-6 flex items-center gap-2"><CandlestickChart size={20} className="text-emerald-400"/> Canlı Piyasa Fiyatları</h3>
+          <div className="space-y-3">
+            {market.map((m: any, i: number) => (
+              <div key={i} className="glass-card p-4 rounded-xl flex flex-col gap-2 border border-white/5 group hover:bg-white/5 transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-200">{m.label}</span>
+                  <div className="flex gap-4">
+                    <span className="text-xs text-rose-400">Alış: {formatNum(m.buy)}</span>
+                    <span className="text-sm font-bold text-emerald-400">Satış: {formatNum(m.sell)}</span>
                   </div>
                 </div>
-              </motion.a>
-            );
-          })}
+                <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium italic">
+                  <div className="flex items-center gap-1">
+                    <div className={cn("w-1.5 h-1.5 rounded-full", m.dailyPct >= 0 ? "bg-emerald-500" : "bg-rose-500")} />
+                    Değişim: {m.dailyPct >= 0 ? "+" : ""}{m.dailyPct}%
+                  </div>
+                  <span>{m.source}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="space-y-6">
+          <div className="glass-panel p-6 rounded-3xl border border-indigo-500/20">
+            <h3 className="font-bold mb-4 flex items-center gap-2 text-indigo-300"><Landmark size={20}/> Merkez Bankası Faizleri</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-black/20 rounded-xl">
+                <div className="text-[10px] text-slate-500 font-bold mb-1">TCMB POLİTİKA</div>
+                <div className="text-2xl font-black text-rose-400">%{tcmbRate.toFixed(2)}</div>
+              </div>
+              <div className="p-4 bg-black/20 rounded-xl">
+                <div className="text-[10px] text-slate-500 font-bold mb-1">FED HEDEF</div>
+                <div className="text-2xl font-black text-indigo-400">%{fedLower.toFixed(2)}-{fedUpper.toFixed(2)}</div>
+              </div>
+            </div>
+          </div>
+          <div className="glass-panel p-6 rounded-3xl border border-emerald-500/20">
+            <h3 className="font-bold mb-2 flex items-center gap-2 text-emerald-300"><Percent size={20}/> Mevduat Faizi Oranları</h3>
+            <div className="text-3xl font-black text-emerald-400">%{depositRates.min.toFixed(1)} - %{depositRates.max.toFixed(1)}</div>
+            <p className="text-[10px] text-slate-500 mt-2 uppercase tracking-tighter italic">Bankaların sunduğu ortalama brüt faiz aralığıdır.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Eğitici Bilgi Pankartları (Piyasa & Faiz - Artış) */}
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="glass-panel p-5 rounded-3xl border-t-4 border-t-rose-500 bg-gradient-to-b from-rose-500/5 to-transparent">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 bg-rose-500/20 rounded-lg text-rose-400"><Percent size={18}/></div>
+            <h4 className="font-bold text-sm text-white">Faiz Artarsa</h4>
+          </div>
+          <p className="text-[11px] text-slate-300 leading-relaxed">
+            Kredi çekmek (araba, ev) zorlaşır. Harcamalar azalır, enflasyonu düşürmek için kullanılır. Tasarruf eden kazanır.
+          </p>
+        </div>
+        <div className="glass-panel p-5 rounded-3xl border-t-4 border-t-emerald-500 bg-gradient-to-b from-emerald-500/5 to-transparent">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400"><Coins size={18}/></div>
+            <h4 className="font-bold text-sm text-white">Altın Artarsa</h4>
+          </div>
+          <p className="text-[11px] text-slate-300 leading-relaxed">
+            Piyasalarda risk veya savaş korkusu vardır. Yatırımcı parayı korumak için "güvenli liman" olan altına kaçar.
+          </p>
+        </div>
+        <div className="glass-panel p-5 rounded-3xl border-t-4 border-t-cyan-500 bg-gradient-to-b from-cyan-500/5 to-transparent">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 bg-cyan-500/20 rounded-lg text-cyan-400"><Globe size={18}/></div>
+            <h4 className="font-bold text-sm text-white">Dolar Artarsa</h4>
+          </div>
+          <p className="text-[11px] text-slate-300 leading-relaxed">
+            İthal ettiğimiz her şey (benzin, telefon) zamlanır. Maliyetler artınca iğneden ipliğe her şeye zam gelir.
+          </p>
+        </div>
+        <div className="glass-panel p-5 rounded-3xl border-t-4 border-t-indigo-500 bg-gradient-to-b from-indigo-500/5 to-transparent">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400"><BarChart3 size={18}/></div>
+            <h4 className="font-bold text-sm text-white">Borsa Artarsa</h4>
+          </div>
+          <p className="text-[11px] text-slate-300 leading-relaxed">
+            Şirketlerin değeri ve ekonomiye güven artar. Tasarrufunu borsada değerlendiren yatırımcılar kazanır.
+          </p>
+        </div>
+      </div>
+
+      {/* Eğitici Bilgi Pankartları (Piyasa & Faiz - Azalış) */}
+      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="glass-panel p-5 rounded-3xl border-t-4 border-t-emerald-500/50 bg-gradient-to-b from-emerald-500/5 to-transparent">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-500"><Percent size={18}/></div>
+            <h4 className="font-bold text-sm text-white">Faiz Düşerse</h4>
+          </div>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            Kredi çekmek kolaylaşır. Ev ve araba satışları artar, piyasa canlanır. Ancak enflasyon riski doğabilir.
+          </p>
+        </div>
+        <div className="glass-panel p-5 rounded-3xl border-t-4 border-t-rose-500/50 bg-gradient-to-b from-rose-500/5 to-transparent">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 bg-rose-500/10 rounded-lg text-rose-500"><Coins size={18}/></div>
+            <h4 className="font-bold text-sm text-white">Altın Düşerse</h4>
+          </div>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            Dünyada işler yolunda gidiyor demektir. Güven artar, yatırımcılar "güvenli liman" yerine borsaya veya üretime yönelir.
+          </p>
+        </div>
+        <div className="glass-panel p-5 rounded-3xl border-t-4 border-t-sky-500/50 bg-gradient-to-b from-sky-500/5 to-transparent">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 bg-sky-500/10 rounded-lg text-sky-500"><Globe size={18}/></div>
+            <h4 className="font-bold text-sm text-white">Dolar Düşerse</h4>
+          </div>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            İthal hammadde maliyeti azalır. Mazot ve benzin fiyatları düşebilir, bu da genel fiyat artışlarını frenler.
+          </p>
+        </div>
+        <div className="glass-panel p-5 rounded-3xl border-t-4 border-t-slate-500/50 bg-gradient-to-b from-slate-500/5 to-transparent">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 bg-slate-500/10 rounded-lg text-slate-400"><BarChart3 size={18}/></div>
+            <h4 className="font-bold text-sm text-white">Borsa Düşerse</h4>
+          </div>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            Ekonomide belirsizlik veya şirket karlarında düşüş olabilir. Yatırımcılar beklemeye geçer, güven azalmış olabilir.
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
-// -------------------------------------------------------------
+function EconomistsTab({ figures }: { figures: HistoricFigure[] }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+      {figures.map((fig, i) => (
+        <a 
+          href={fig.wikiUrl} 
+          target="_blank" 
+          rel="noreferrer" 
+          key={i} 
+          className="glass-panel p-6 rounded-[2rem] flex flex-col items-center text-center gap-4 group hover:ring-2 hover:ring-amber-500/50 transition-all hover:bg-white/5"
+        >
+          <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden flex-shrink-0 border-4 border-white/5 group-hover:border-amber-500/30 transition-colors shadow-2xl">
+            <img 
+              src={fig.imageUrl} 
+              alt={fig.name} 
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+            />
+          </div>
+          <div className="flex-1 flex flex-col gap-2">
+            <h4 className="font-bold text-lg text-white group-hover:text-amber-400 transition-colors">{fig.name}</h4>
+            <div className="px-3 py-1 bg-amber-500/10 rounded-full inline-block self-center">
+              <p className="text-[9px] text-amber-500 font-bold uppercase tracking-wider">{fig.title}</p>
+            </div>
+            <p className="text-xs text-slate-400 line-clamp-4 leading-relaxed mt-2">{fig.bio}</p>
+          </div>
+          <div className="mt-2 w-full pt-4 border-t border-white/5 flex items-center justify-center gap-2 text-[10px] font-bold text-slate-500 group-hover:text-amber-500 transition-colors">
+            WIKIPEDIA'DA GÖR <ExternalLink size={12} />
+          </div>
+        </a>
+      ))}
+    </div>
+  );
+}
+
+function ConceptsTab({ concepts, chatMessages, setChatMessages, chatInput, setChatInput, isChatLoading, setIsChatLoading }: any) {
+  const handleChatSubmit = async (e: any) => {
+    e.preventDefault();
+    if (!chatInput.trim() || isChatLoading) return;
+    const userMessage = { role: "user", content: chatInput };
+    setChatMessages((prev: any) => [...prev, userMessage]);
+    setChatInput("");
+    setIsChatLoading(true);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [...chatMessages, userMessage] }),
+      });
+      if (!res.ok) throw new Error("API Hatası");
+      setChatMessages((prev: any) => [...prev, { role: "model", content: "" }]);
+      
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder("utf-8");
+      
+      while (reader) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        
+        const chunkValue = decoder.decode(value, { stream: true });
+        
+        setChatMessages((prev: any) => {
+          const newMessages = [...prev];
+          const lastMsg = newMessages[newMessages.length - 1];
+          if (lastMsg && lastMsg.role === "model") {
+            newMessages[newMessages.length - 1] = {
+              ...lastMsg,
+              content: lastMsg.content + chunkValue
+            };
+          }
+          return newMessages;
+        });
+      }
+    } catch (err) {
+      setChatMessages((prev: any) => [...prev, { role: "model", content: "Bir hata oluştu." }]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {concepts.map((c: any, i: number) => (
+          <div key={i} className="glass-panel p-6 rounded-3xl bg-slate-900/40 border border-white/5">
+            <h4 className="text-lg font-bold text-cyan-400 mb-2">{c.term}</h4>
+            <p className="text-sm text-slate-300 mb-4">{c.definition}</p>
+            <div className="p-3 bg-black/30 rounded-xl text-xs text-slate-400 italic">"{c.example}"</div>
+          </div>
+        ))}
+      </div>
+      <div className="glass-panel rounded-3xl overflow-hidden h-[500px] flex flex-col bg-slate-900/80 border border-white/10">
+        <div className="p-4 bg-black/20 border-b border-white/10 font-bold text-cyan-400 flex items-center gap-2"><Bot size={18}/> Ekonomi Asistanı</div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {chatMessages.map((msg: any, i: number) => (
+            <div key={i} className={cn("max-w-[85%] p-3 rounded-2xl text-sm", msg.role === 'user' ? "ml-auto bg-slate-800 text-slate-200" : "mr-auto bg-cyan-950/20 text-slate-300 border border-cyan-900/30")}>
+              <div className="prose prose-invert prose-sm max-w-none">
+                <ReactMarkdown>{msg.content}</ReactMarkdown>
+              </div>
+            </div>
+          ))}
+          {isChatLoading && <div className="text-xs text-cyan-500 animate-pulse">Asistan düşünüyor...</div>}
+        </div>
+        <form onSubmit={handleChatSubmit} className="p-4 border-t border-white/5 flex gap-2">
+          <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Sorunuzu yazın..." className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none" />
+          <button type="submit" className="bg-cyan-600 px-4 py-2 rounded-xl"><Send size={16}/></button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function InvestmentAgentTab({ market }: { market: MarketItem[] }) {
+  const [messages, setMessages] = useState<{role: string, content: string}[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // Initial greeting
+  useEffect(() => {
+    if (messages.length === 0) {
+      setMessages([
+        { 
+          role: "model", 
+          content: "Merhaba! Ben sizin profesyonel **Yatırım Uzmanı Agent**'ınızım. 🚀\n\nFinansal hedeflerinize ulaşmanız için size özel, veriye dayalı ve rasyonel yatırım stratejileri geliştirebilirim. Borsa İstanbul, Amerika ve Londra piyasalarındaki hisse senetlerini detaylı olarak inceleyebilir; KAP (Kamuyu Aydınlatma Platformu) verilerini, SPK bültenlerini ve Investing.com, Dünya Gazetesi, BBC Business gibi kaynaklardan güncel finansal haberleri analiz edebilirim.\n\nSizin için en uygun portföyü hazırlayabilmem adına; bütçenizi, yatırım vadenizi veya dini hassasiyetlerinizi paylaşabilir ya da doğrudan aklınızdaki bir yatırım aracı hakkında analiz isteyebilirsiniz. Nasıl yardımcı olabilirim?" 
+        }
+      ]);
+    }
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || loading) return;
+
+    const userMsg = { role: "user", content: input };
+    setMessages(prev => [...prev, userMsg]);
+    setInput("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/investment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [...messages, userMsg], market }),
+      });
+
+      if (!res.ok) throw new Error("API Hatası");
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      
+      setMessages(prev => [...prev, { role: "model", content: "" }]);
+
+      while (true) {
+        const { done, value } = await reader!.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        setMessages(prev => {
+          const newMsgs = [...prev];
+          const lastIndex = newMsgs.length - 1;
+          const lastMsg = newMsgs[lastIndex];
+          
+          if (lastMsg && lastMsg.role === "model") {
+            newMsgs[lastIndex] = {
+              ...lastMsg,
+              content: lastMsg.content + chunk
+            };
+          }
+          return newMsgs;
+        });
+      }
+    } catch (error) {
+      setMessages(prev => [...prev, { role: "model", content: "Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin." }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-5xl mx-auto py-4 h-[700px] flex flex-col">
+      <div className="flex items-center gap-3 mb-6 flex-shrink-0">
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-orange-500 to-rose-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
+          <Target className="text-white" size={24} />
+        </div>
+        <div>
+          <h2 className="text-2xl font-black text-white tracking-tight">Yatırım Uzmanı Agent</h2>
+          <p className="text-slate-400 text-xs">LangChain Destekli Canlı Piyasa Analisti</p>
+        </div>
+      </div>
+
+      <div className="flex-1 glass-panel rounded-3xl overflow-hidden flex flex-col border border-white/10 bg-slate-900/40 relative">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-[100px] pointer-events-none" />
+        
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-white/10">
+          {messages.map((msg, i) => (
+            <motion.div 
+              key={i}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={cn(
+                "flex gap-4 max-w-[85%]",
+                msg.role === 'user' ? "ml-auto flex-row-reverse" : "mr-auto"
+              )}
+            >
+              <div className={cn(
+                "w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 border",
+                msg.role === 'user' ? "bg-slate-800 border-slate-700" : "bg-cyan-950/40 border-cyan-500/20"
+              )}>
+                {msg.role === 'user' ? <User size={14} className="text-slate-400" /> : <Bot size={14} className="text-cyan-400" />}
+              </div>
+              <div className={cn(
+                "p-4 rounded-2xl text-sm leading-relaxed",
+                msg.role === 'user' 
+                  ? "bg-slate-800 text-slate-200 rounded-tr-none" 
+                  : "bg-slate-900/60 text-slate-300 border border-white/5 rounded-tl-none"
+              )}>
+                <div className="prose prose-invert prose-sm max-w-none">
+                  <ReactMarkdown>
+                    {msg.content}
+                  </ReactMarkdown>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+          {loading && (
+            <div className="flex gap-4 max-w-[85%] mr-auto">
+              <div className="w-8 h-8 rounded-xl bg-cyan-950/40 border border-cyan-500/20 flex items-center justify-center animate-pulse">
+                <Bot size={14} className="text-cyan-400" />
+              </div>
+              <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/5 rounded-tl-none flex items-center gap-2">
+                <div className="flex gap-1">
+                  <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                  <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                  <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-bounce" />
+                </div>
+                <span className="text-xs text-cyan-500 font-bold uppercase tracking-widest ml-2">Piyasalar Analiz Ediliyor...</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 bg-black/20 border-t border-white/5 flex gap-3 flex-shrink-0">
+          <input 
+            type="text" 
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Yatırım planınızı buraya yazın (Örn: 500.000 TL bütçem var, kısa vadeli faizsiz önerin)..."
+            className="flex-1 bg-slate-900/80 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all text-white placeholder:text-slate-500"
+          />
+          <button 
+            type="submit" 
+            disabled={loading || !input.trim()}
+            className="bg-gradient-to-tr from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed px-6 rounded-2xl transition-all shadow-lg shadow-cyan-500/20 active:scale-95"
+          >
+            <Send size={20} className="text-white" />
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// --- UTILS ---
 
 function formatDate(value?: string) {
   if (!value) return "-";
@@ -724,84 +786,5 @@ function formatDate(value?: string) {
 
 function formatNum(v: number) {
   if (isNaN(v)) return v;
-  // Kesin virgüle çevir, sonsuz küsürat kabul et, yuvarlama asla yapma
   return new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 5 }).format(v);
-}
-
-// --- DEHALAR VE EKONOMİSTLER SEKMESİ ---
-function GeniusesTab({ figures, articles }: { figures: HistoricFigure[], articles: ArticleItem[] }) {
-  if (!figures || figures.length === 0) return null;
-
-  return (
-    <div className="space-y-10">
-      <div className="flex flex-col gap-2">
-         <h2 className="text-2xl md:text-3xl font-bold flex items-center gap-3"><Lightbulb className="text-amber-400"/> Tarihin Seçkin Zekaları</h2>
-         <p className="text-sm text-slate-400">Her gün 3 Yerli (İslam dahil) ve 3 Yabancı deha bu panoda değişerek belirecektir. Wikipedia destekli dinamik ansiklopedik havuz.</p>
-         <div className="mt-2 text-xs font-bold px-3 py-1 bg-white/5 w-fit rounded-lg text-amber-500">Günün Zaman Tohumu Aktif</div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-         {figures.map((fig, i) => (
-            <motion.a 
-               href={fig.wikiUrl}
-               target="_blank"
-               rel="noreferrer"
-               key={fig.id}
-               initial={{ opacity: 0, scale: 0.95 }} 
-               animate={{ opacity: 1, scale: 1 }} 
-               transition={{ delay: i * 0.1 }}
-               className="glass-panel p-0 rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-xl ring-1 ring-amber-500/20 hover:ring-2 hover:ring-amber-500/50 group transition-all min-h-[320px] md:min-h-0"
-            >
-               {/* Görsel Alanı */}
-               <div className="relative w-full md:w-2/5 h-64 md:h-auto overflow-hidden flex-shrink-0">
-                  <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style={{ backgroundImage: `url(${fig.imageUrl})` }}></div>
-                  <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-[#0f172a] via-[#0f172a]/70 to-transparent"></div>
-                  
-                  {/* Badge */}
-                  <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-                     <span className={cn(
-                        "text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md shadow-lg",
-                        fig.type === 'economist' ? "text-cyan-200 bg-cyan-950/80 border border-cyan-800/50" : "text-amber-200 bg-amber-950/80 border border-amber-800/50"
-                     )}>
-                        {fig.type === 'economist' ? 'Ekonomist' : 'Bilim İnsanı'}
-                     </span>
-                     <span className={cn(
-                        "text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md w-fit bg-black/60",
-                        fig.origin === 'local' ? "text-emerald-400" : "text-slate-300"
-                     )}>
-                        {fig.origin === 'local' ? 'Yerli & İslami' : 'Yabancı Kaynak'}
-                     </span>
-                  </div>
-               </div>
-
-               {/* Metin Alanı */}
-               <div className="flex-1 p-6 flex flex-col justify-center bg-slate-900/60 backdrop-blur-sm z-10 -mt-10 md:mt-0 rounded-t-3xl md:rounded-l-none md:rounded-r-3xl">
-                  <h3 className="text-xl font-bold text-white mb-1">{fig.name}</h3>
-                  <div className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-4 line-clamp-1">{fig.title}</div>
-                  
-                  <p className="text-sm text-slate-300 leading-relaxed italic mb-5 border-l-2 border-white/20 pl-3 line-clamp-4">"{fig.bio}"</p>
-                  
-                  <div className="space-y-2 mb-4">
-                     <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Başlıca Katkıları</div>
-                     {fig.achievements?.slice(0, 2).map((ach, idx) => (
-                        <div key={idx} className="flex items-start gap-2">
-                           <Target size={14} className="text-amber-400 mt-0.5 flex-shrink-0" />
-                           <span className="text-xs text-slate-200 leading-normal line-clamp-1">{ach}</span>
-                        </div>
-                     ))}
-                  </div>
-
-                  <div className="mt-auto pt-4 border-t border-white/10 flex items-center justify-between group-hover:text-amber-400 transition-colors">
-                     <span className="text-[10px] font-black uppercase tracking-widest">Tüm Hayatını Oku (Vikipedi)</span>
-                     <ExternalLink size={14} />
-                  </div>
-               </div>
-            </motion.a>
-         ))}
-
-
-
-      </div>
-    </div>
-  );
 }

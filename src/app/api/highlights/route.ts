@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { takeRateLimit } from "@/lib/security";
 
 type Payload = {
@@ -33,13 +33,16 @@ export async function POST(req: Request) {
   }
 
   const quickFallback = buildFallback(body);
+  const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!geminiApiKey) {
     return NextResponse.json({ source: "local-rule", summary: quickFallback });
   }
 
   try {
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const ai = new GoogleGenerativeAI(geminiApiKey);
+    const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
+
     const prompt = `
 Sen ekonomi dersi ogrencilerine yardim eden bir asistansin.
 Kisa, anlasilir ve sinav odakli yaz.
@@ -55,16 +58,19 @@ Veri:
 3) Olasi Sonuc / Yorum
 `.trim();
 
-    const out = await client.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 280,
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        maxOutputTokens: 280,
+        temperature: 0.7,
+      }
     });
 
-    const summary = out.choices[0]?.message?.content?.trim() || quickFallback;
+    const summary = result.response.text() || quickFallback;
 
-    return NextResponse.json({ source: "openai", summary });
-  } catch {
+    return NextResponse.json({ source: "gemini", summary });
+  } catch (error) {
+    console.error("Highlights API Error:", error);
     return NextResponse.json({ source: "local-rule", summary: quickFallback });
   }
 }

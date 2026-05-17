@@ -18,18 +18,23 @@ Proje, sadece statik bir veri ekranı olmaktan öte, kullanıcının bütçesine
 Platform, kullanıcı deneyimini maksimize etmek için 5 ana modülden (sekmeden) oluşmaktadır:
 
 1.  **📊 TÜİK Son Dakika:** 
+    <br>![TÜİK Ekranı](assets/tuik.png)<br>
     *   TÜFE ve Yİ-ÜFE oranlarının aylık ve yıllık bazda anlık olarak çekildiği ana ekrandır.
     *   **Eğitici Pankartlar:** Sadece sayısal veri sunmaz; enflasyonun (ÜFE ve TÜFE) artması veya azalması durumunda günlük hayatta (market fiyatları, üretim maliyetleri vb.) nelerin değişeceğini basit örneklerle anlatır.
 2.  **📈 Piyasa & Faiz (Canlı Veriler):** 
+    <br>![Piyasa Ekranı](assets/piyasa.png)<br>
     *   **BIST 100:** Borsa İstanbul'un anlık puan durumu ve günlük yüzde değişimini gösteren özel bir bilgi kartı.
     *   **Kurlar ve Emtia:** Kapalıçarşı canlı Altın, Dolar, Euro fiyatları.
     *   **Faiz Oranları:** TCMB (Türkiye Cumhuriyet Merkez Bankası) politika faizi, ABD Merkez Bankası (FED) hedef faiz aralığı ve Türkiye'deki bankaların sunduğu ortalama mevduat faiz oranları. Ayrıca bu faizlerin ve kurların artıp azalmasının ne anlama geldiğini açıklayan bilgi blokları içerir.
 3.  **💡 Ekonomistler:** 
+    <br>![Ekonomistler Ekranı](assets/ekonomistler.png)<br>
     *   Tarihe damga vurmuş ünlü ve tarihi ekonomistlerin (Adam Smith, John Maynard Keynes, Karl Marx vb.) biyografilerinin, teorilerinin ve Wikipedia bağlantılarının yer aldığı eğitici ansiklopedi bölümü.
 4.  **📖 Finans Kavramları ve Ekonomi Asistanı:** 
+    <br>![Finans Kavramları Ekranı](assets/kavramlar.png)<br>
     *   Sık kullanılan ekonomi terminolojisini (Enflasyon, Devalüasyon, Stagflasyon vb.) basitleştiren bir sözlük.
     *   Aynı zamanda bu ekranda temel finansal sorularınızı yanıtlamak için eğitilmiş, Gemini altyapısıyla çalışan hızlı bir chat bot asistanı bulunur.
 5.  **🚀 Yatırım Uzmanı Agent'ı (Otonom AI):** 
+    <br>![Yatırım Uzmanı Ekranı](assets/agent.png)<br>
     *   Projenin kalbi olan bu bölüm; anlık piyasa verilerini araştırıp analiz eden, canlı haberleri okuyan ve kişiye özel portföy oluşturan otonom ajandır. (Detayları 4. Bölümde açıklanmıştır).
 
 ---
